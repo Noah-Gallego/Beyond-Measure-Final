@@ -96,11 +96,11 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
         <div className="w-full bg-gradient-to-r from-navy via-sky to-sun py-3 px-4 text-white flex justify-between items-center sticky top-0 z-50 shadow-md">
           <Link href="/" className="flex items-center gap-2">
             <Image
-              src="/logo.jpg"
+              src="/new-logo.jpg"
               alt="Beyond Measure"
               width={40}
               height={40}
-              className="h-8 w-auto rounded-md border-2 border-white shadow-sm"
+              className="h-10 w-auto rounded-md border-2 border-white shadow-sm"
             />
             <span className="font-bold text-lg tracking-tight">Beyond Measure</span>
           </Link>
@@ -181,11 +181,11 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
       <div className="w-full bg-gradient-to-r from-navy via-sky to-sun py-3 px-4 text-white flex justify-between items-center sticky top-0 z-50 shadow-md">
         <Link href="/" className="flex items-center gap-2">
           <Image
-            src="/logo.jpg"
+            src="/new-logo.jpg"
             alt="Beyond Measure"
             width={40}
             height={40}
-            className="h-8 w-auto rounded-md border-2 border-white shadow-sm"
+            className="h-10 w-auto rounded-md border-2 border-white shadow-sm"
           />
           <span className="font-bold text-lg tracking-tight">Beyond Measure</span>
         </Link>
@@ -287,7 +287,7 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
             </div>
             <div className="flex items-center justify-center">
               <Image
-                src="/hero-image.jpg"
+                src="/classroom3.jpg"
                 alt="Students in classroom"
                 width={550}
                 height={550}
@@ -326,7 +326,7 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
               <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
                 <div className="aspect-video overflow-hidden rounded-lg mb-4">
                   <Image
-                    src="/how-it-works-1.jpg"
+                    src="/classroom1.jpg"
                     alt="Teacher creating a project"
                     width={400}
                     height={225}
@@ -351,7 +351,7 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
               <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
                 <div className="aspect-video overflow-hidden rounded-lg mb-4">
                   <Image
-                    src="/how-it-works-2.jpg"
+                    src="/classroom2.jpg"
                     alt="Donors funding a project"
                     width={400}
                     height={225}
@@ -376,7 +376,7 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
               <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
                 <div className="aspect-video overflow-hidden rounded-lg mb-4">
                   <Image
-                    src="/how-it-works-3.jpg"
+                    src="/classroom3.jpg"
                     alt="Students benefiting from the project"
                     width={400}
                     height={225}
@@ -418,7 +418,7 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
               <CardContent className="p-6">
                 <div className="flex flex-col items-center space-y-4 mb-4">
                   <Image
-                    src="/testimonial-1.jpg"
+                    src="/teacher1.jpg"
                     alt="Elementary Student"
                     width={120}
                     height={120}
@@ -438,7 +438,7 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
               <CardContent className="p-6">
                 <div className="flex flex-col items-center space-y-4 mb-4">
                   <Image
-                    src="/testimonial-2.jpg"
+                    src="/testimonial-3.jpg"
                     alt="Student Group Project"
                     width={120}
                     height={120}
@@ -458,7 +458,7 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
               <CardContent className="p-6">
                 <div className="flex flex-col items-center space-y-4 mb-4">
                   <Image
-                    src="/testimonial-3.jpg"
+                    src="/teacher2.jpg"
                     alt="Creative Classroom"
                     width={120}
                     height={120}
@@ -513,7 +513,7 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
             <div className="flex items-center justify-center">
               <div className="relative h-[400px] md:h-[500px] rounded-xl overflow-hidden">
                 <Image
-                  src="/about-image.jpg"
+                  src="/about-classroom.jpg"
                   alt="Students collaborating"
                   fill
                   className="object-cover"
@@ -561,6 +561,64 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
                   </CardContent>
                 </Card>
               ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Founders Section */}
+      <section id="founders" className="bg-white py-16">
+        <div className="container px-4 md:px-6">
+          <div className="flex flex-col items-center justify-center space-y-4 text-center mb-12">
+            <div className="space-y-2">
+              <h2 className="text-3xl font-normal tracking-tight sm:text-4xl md:text-5xl text-navy">Meet Our Founders</h2>
+              <p className="max-w-[900px] text-navy/80 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed font-light">
+                Passionate educators dedicated to transforming classroom funding
+              </p>
+            </div>
+          </div>
+          
+          <div className="grid gap-8 md:grid-cols-3 max-w-5xl mx-auto">
+            <div className="flex flex-col items-center">
+              <div className="mb-4 relative h-64 w-64 overflow-hidden rounded-xl">
+                <Image
+                  src="/founder1.jpg"
+                  alt="John-Paul Lake"
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <h3 className="text-xl font-semibold text-navy">John-Paul Lake</h3>
+              <p className="text-sky font-medium">Treasurer</p>
+              <p className="text-gray-600 text-center mt-2">Former educator with a passion for innovative teaching approaches and equal educational opportunities.</p>
+            </div>
+            
+            <div className="flex flex-col items-center">
+              <div className="mb-4 relative h-64 w-64 overflow-hidden rounded-xl">
+                <Image
+                  src="/founder2.jpg"
+                  alt="Ingrid Lake"
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <h3 className="text-xl font-semibold text-navy">Ingrid Lake</h3>
+              <p className="text-sky font-medium">President</p>
+              <p className="text-gray-600 text-center mt-2">Former school administrator with expertise in educational resource management and program development.</p>
+            </div>
+            
+            <div className="flex flex-col items-center">
+              <div className="mb-4 relative h-64 w-64 overflow-hidden rounded-xl">
+                <Image
+                  src="/founder3.jpg"
+                  alt="Danielle Patterson"
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <h3 className="text-xl font-semibold text-navy">Danielle Patterson</h3>
+              <p className="text-sky font-medium">Director</p>
+              <p className="text-gray-600 text-center mt-2">Educational consultant with over 15 years of experience in classroom innovation and technology integration.</p>
             </div>
           </div>
         </div>
