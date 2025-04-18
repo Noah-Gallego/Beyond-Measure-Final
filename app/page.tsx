@@ -137,51 +137,10 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
 
   return (
     <>
-      {/* Top Navigation Bar */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm">
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center gap-6">
-              <Link href="/" className="flex items-center gap-2">
-                <Image
-                  src="/logo-full.svg"
-                  alt="Beyond Measure"
-                  width={172}
-                  height={40}
-                  priority
-                  className="h-10 w-auto"
-                />
-              </Link>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="hidden md:flex">
-                <ScrollToSection sections={sections} />
-              </div>
-              <div className="flex items-center gap-3">
-                <Button
-                  onClick={() => setLoginOpen(true)}
-                  variant="outline"
-                  className="hidden sm:flex bg-white text-navy border-none hover:bg-gray-100"
-                >
-                  Log in
-                </Button>
-                <Button
-                  onClick={() => setLoginOpen(true)}
-                  className="hidden sm:flex bg-navy text-white hover:bg-navy/90"
-                >
-                  Sign up
-                </Button>
-                <LoginDialog open={loginOpen} onOpenChange={setLoginOpen} />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Hero Section */}
       <section
         id="hero"
-        className="bg-gradient-to-b from-sun-light to-white py-12 md:py-16 pt-32 min-h-[70vh] flex items-center"
+        className="bg-gradient-to-b from-sun-light to-white py-12 md:py-16 min-h-[70vh] flex items-center"
       >
         <div className="container px-4 md:px-6">
           <div className="grid gap-6 lg:grid-cols-2 lg:gap-12 xl:grid-cols-2">
@@ -198,10 +157,10 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
                 </p>
               </div>
               
-              {/* Add SearchWrapper with explicit client-only rendering */}
-              <div className="mt-4 mb-6">
+              {/* Left-aligned search wrapper */}
+              <div className="mt-4 mb-6 ml-0">
                 <Suspense fallback={
-                  <div className="max-w-3xl mx-auto relative">
+                  <div className="max-w-3xl relative">
                     <div className="bg-white rounded-full shadow-lg pl-5 pr-5 py-3 flex items-center gap-3 flex-wrap md:flex-nowrap">
                       <div className="text-sky flex-shrink-0">
                         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
@@ -212,7 +171,9 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
                   </div>
                 }>
                   <ClientOnly>
-                    <SearchWrapper />
+                    <div className="max-w-3xl">
+                      <SearchWrapper />
+                    </div>
                   </ClientOnly>
                 </Suspense>
               </div>
@@ -246,11 +207,11 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
             </div>
             <div className="flex items-center justify-center">
               <Image
-                src="/hero-image.png"
+                src="/hero-image.jpg"
                 alt="Students in classroom"
                 width={550}
                 height={550}
-                className="rounded-2xl object-cover"
+                className="rounded-2xl shadow-lg object-cover"
                 priority
               />
             </div>
@@ -272,40 +233,79 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
               </p>
             </div>
           </div>
-          <div className="mx-auto grid max-w-5xl items-center gap-6 py-12 lg:grid-cols-3 lg:gap-12">
-            <Card className="relative overflow-hidden border-none shadow-md">
-              <div className="absolute -top-12 -right-12 h-24 w-24 rounded-full bg-sky/10"></div>
-              <CardHeader>
-                <FileText className="h-9 w-9 text-sky" />
-                <CardTitle className="text-navy text-xl mt-4">1. Submit a Project</CardTitle>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+            <Card className="bg-white border-none shadow-md">
+              <CardHeader className="p-4 md:p-6">
+                <div className="flex items-center space-x-4">
+                  <div className="flex-shrink-0 h-10 w-10 rounded-full bg-sun flex items-center justify-center">
+                    <FileText className="h-5 w-5 text-navy" />
+                  </div>
+                  <CardTitle className="text-lg md:text-xl font-medium text-navy">1. Create a Project</CardTitle>
+                </div>
               </CardHeader>
-              <CardContent>
-                <p className="text-navy opacity-80">
-                  Private schools can submit their educational project needs, including detailed information and funding goals.
+              <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
+                <div className="aspect-video overflow-hidden rounded-lg mb-4">
+                  <Image
+                    src="/how-it-works-1.jpg"
+                    alt="Teacher creating a project"
+                    width={400}
+                    height={225}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <p className="text-gray-700">
+                  Teachers create detailed project proposals outlining the educational needs, funding goals, and direct 
+                  impact on student experience. Every project is reviewed for authenticity and impact.
                 </p>
               </CardContent>
             </Card>
-            <Card className="relative overflow-hidden border-none shadow-md">
-              <div className="absolute -top-12 -right-12 h-24 w-24 rounded-full bg-sky/10"></div>
-              <CardHeader>
-                <DollarSign className="h-9 w-9 text-sky" />
-                <CardTitle className="text-navy text-xl mt-4">2. Fund a Project</CardTitle>
+            <Card className="bg-white border-none shadow-md">
+              <CardHeader className="p-4 md:p-6">
+                <div className="flex items-center space-x-4">
+                  <div className="flex-shrink-0 h-10 w-10 rounded-full bg-sun flex items-center justify-center">
+                    <DollarSign className="h-5 w-5 text-navy" />
+                  </div>
+                  <CardTitle className="text-lg md:text-xl font-medium text-navy">2. Receive Funding</CardTitle>
+                </div>
               </CardHeader>
-              <CardContent>
-                <p className="text-navy opacity-80">
-                  Donors can browse projects, make tax-deductible contributions, and track the impact of their donations.
+              <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
+                <div className="aspect-video overflow-hidden rounded-lg mb-4">
+                  <Image
+                    src="/how-it-works-2.jpg"
+                    alt="Donors funding a project"
+                    width={400}
+                    height={225}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <p className="text-gray-700">
+                  Donors browse projects, contribute any amount, and track the project's funding progress. 
+                  100% of donations go directly to the project with no administrative fees.
                 </p>
               </CardContent>
             </Card>
-            <Card className="relative overflow-hidden border-none shadow-md">
-              <div className="absolute -top-12 -right-12 h-24 w-24 rounded-full bg-sky/10"></div>
-              <CardHeader>
-                <Package className="h-9 w-9 text-sky" />
-                <CardTitle className="text-navy text-xl mt-4">3. Complete the Project</CardTitle>
+            <Card className="bg-white border-none shadow-md">
+              <CardHeader className="p-4 md:p-6">
+                <div className="flex items-center space-x-4">
+                  <div className="flex-shrink-0 h-10 w-10 rounded-full bg-sun flex items-center justify-center">
+                    <Package className="h-5 w-5 text-navy" />
+                  </div>
+                  <CardTitle className="text-lg md:text-xl font-medium text-navy">3. Impact Students</CardTitle>
+                </div>
               </CardHeader>
-              <CardContent>
-                <p className="text-navy opacity-80">
-                  Schools receive the funds when the project is fully funded, implement their plan, and share updates with donors.
+              <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
+                <div className="aspect-video overflow-hidden rounded-lg mb-4">
+                  <Image
+                    src="/how-it-works-3.jpg"
+                    alt="Students benefiting from the project"
+                    width={400}
+                    height={225}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <p className="text-gray-700">
+                  Funded projects are implemented in classrooms, enhancing educational experiences. 
+                  Teachers share updates and results, connecting donors to the impact of their contributions.
                 </p>
               </CardContent>
             </Card>
@@ -333,45 +333,71 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
               </p>
             </div>
           </div>
-          <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 py-16 md:grid-cols-2 lg:grid-cols-3">
-            {[
-              {
-                quote:
-                  "BeyondMeasure has completely changed how I assess student learning. I now have a much clearer picture of each student's growth.",
-                author: "Sarah Johnson",
-                role: "5th Grade Teacher",
-              },
-              {
-                quote:
-                  "The insights I get from BeyondMeasure help me tailor my instruction to meet the needs of every student in my classroom.",
-                author: "Michael Rodriguez",
-                role: "High School Science",
-              },
-              {
-                quote:
-                  "Parents love the detailed feedback they receive about their child's progress. It's opened up meaningful conversations about learning.",
-                author: "Emily Chen",
-                role: "Middle School English",
-              },
-            ].map((testimonial, index) => (
-              <Card key={index} className="bg-navy/80 border-sky/20 text-white shadow-soft">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-sun font-normal">
-                    <CheckCircle className="h-5 w-5" />
-                    Testimonial
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="italic font-light">&ldquo;{testimonial.quote}&rdquo;</p>
-                </CardContent>
-                <CardFooter>
+          <div className="grid gap-6 lg:grid-cols-3 lg:gap-12">
+            <Card className="bg-white border-none shadow-md">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-4 mb-4">
+                  <Image
+                    src="/testimonial-1.jpg"
+                    alt="Sarah Johnson"
+                    width={48}
+                    height={48}
+                    className="rounded-full h-12 w-12 object-cover"
+                  />
                   <div>
-                    <p className="font-normal">{testimonial.author}</p>
-                    <p className="text-sm text-sky">{testimonial.role}</p>
+                    <p className="font-medium text-navy">Sarah Johnson</p>
+                    <p className="text-sm text-gray-500">Parent</p>
                   </div>
-                </CardFooter>
-              </Card>
-            ))}
+                </div>
+                <p className="text-gray-700">
+                  "Being able to directly support my child's classroom has been incredible. Beyond Measure
+                  makes it so easy to see exactly where my donation goes and the impact it has."
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="bg-white border-none shadow-md">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-4 mb-4">
+                  <Image
+                    src="/testimonial-2.jpg"
+                    alt="Michael Rodriguez"
+                    width={48}
+                    height={48}
+                    className="rounded-full h-12 w-12 object-cover"
+                  />
+                  <div>
+                    <p className="font-medium text-navy">Michael Rodriguez</p>
+                    <p className="text-sm text-gray-500">School Administrator</p>
+                  </div>
+                </div>
+                <p className="text-gray-700">
+                  "Beyond Measure has transformed how our teachers access resources. The platform is intuitive,
+                  transparent, and has helped bring innovative projects to life that would otherwise go unfunded."
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="bg-white border-none shadow-md">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-4 mb-4">
+                  <Image
+                    src="/testimonial-3.jpg"
+                    alt="Jennifer Wilson"
+                    width={48}
+                    height={48}
+                    className="rounded-full h-12 w-12 object-cover"
+                  />
+                  <div>
+                    <p className="font-medium text-navy">Jennifer Wilson</p>
+                    <p className="text-sm text-gray-500">Teacher</p>
+                  </div>
+                </div>
+                <p className="text-gray-700">
+                  "I was able to fund a class set of advanced science equipment in just two weeks. The
+                  support from the community has been overwhelming, and my students now have experiences
+                  they never would have had otherwise."
+                </p>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
@@ -409,13 +435,14 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
               </div>
             </div>
             <div className="flex items-center justify-center">
-              <Image
-                src="/placeholder.svg?height=400&width=600"
-                width={600}
-                height={400}
-                alt="Teachers and students in a classroom"
-                className="rounded-lg object-cover"
-              />
+              <div className="relative h-[400px] md:h-[500px] rounded-xl overflow-hidden">
+                <Image
+                  src="/about-image.jpg"
+                  alt="Students collaborating"
+                  fill
+                  className="object-cover"
+                />
+              </div>
             </div>
           </div>
 

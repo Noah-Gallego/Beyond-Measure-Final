@@ -1,5 +1,7 @@
 "use client"
 import { usePathname } from "next/navigation"
+import Link from "next/link"
+import Image from "next/image"
 
 interface MainNavProps {
   navButtonStyles?: {
@@ -42,5 +44,18 @@ export function MainNav({ navButtonStyles }: MainNavProps) {
 
   const styles = navButtonStyles || defaultStyles
 
-  return <nav className="flex items-center space-x-4">{/* Navigation links removed as requested */}</nav>
+  return (
+    <nav className="flex items-center space-x-4">
+      <Link href="/" className="flex items-center space-x-2">
+        <Image
+          src="/logo.jpg"
+          alt="Beyond Measure"
+          width={40}
+          height={40}
+          className="h-8 w-auto rounded-md"
+        />
+        <span className="font-semibold hidden md:inline-block text-navy">Beyond Measure</span>
+      </Link>
+    </nav>
+  )
 }
