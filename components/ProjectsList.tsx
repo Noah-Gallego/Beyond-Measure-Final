@@ -2,9 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '../utils/supabase';
+import { supabaseAdmin } from '../utils/supabaseAdmin';
 import { useAuth } from './AuthProvider';
 import Link from 'next/link';
+import Image from 'next/image';
 import '../styles/ProjectsGrid.css';
+import ProfileAvatar from '@/components/ProfileAvatar';
+import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
+import { CategoryBadge } from '@/components/CategoryBadge';
+import { FundingProgress } from '@/components/FundingProgress';
+import { useTheme } from "next-themes";
+import { createClient } from '@/utils/supabase/client';
 
 type Project = {
   id: string;
@@ -25,6 +33,10 @@ type Project = {
       state: string;
     };
   } | null;
+  categories?: {
+    id: string;
+    name: string;
+  }[];
 };
 
 interface ProjectsListProps {
@@ -32,13 +44,17 @@ interface ProjectsListProps {
   categoryFilter?: string;
   featured?: boolean;
   limit?: number;
+  minFunding?: number;
+  maxFunding?: number;
 }
 
 export default function ProjectsList({ 
   searchQuery = '', 
   categoryFilter = 'all',
   featured = false,
-  limit
+  limit,
+  minFunding = 0,
+  maxFunding = 50000
 }: ProjectsListProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
@@ -62,6 +78,8 @@ export default function ProjectsList({
     const fetchProjects = async () => {
       try {
         setLoading(true);
+        
+        // Step 1: First fetch the basic project data
         let query = supabase
           .from('projects')
           .select(`
@@ -73,16 +91,9 @@ export default function ProjectsList({
             current_amount, 
             main_image_url,
             status,
-            teacher_profiles:teacher_id(
-              id, 
-              user_id,
-              school_name, 
-              school_city, 
-              school_state,
-              users:user_id(
-                first_name,
-                last_name
-              )
+            teacher_id,
+            categories:project_categories(
+              category:categories(id, name)
             )
           `)
           .eq('status', 'active');
@@ -104,51 +115,118 @@ export default function ProjectsList({
 
         if (error) throw error;
         
-        // Transform the data to match our Project type
-        const formattedProjects = data?.map(project => {
+        console.log('Fetched projects data:', data);
+        
+        // Before we start the loop, define our default avatar URL
+        const defaultAvatarUrl = darkMode
+          ? "/images/default-avatar-dark.svg"
+          : "/images/default-avatar.svg";
+
+        // Step 2: Now fetch the teacher profiles with admin privileges
+        const formattedProjects = await Promise.all(data?.map(async project => {
+          console.log('Processing project:', project.title);
+          
           // Handle teacher data
           let teacherData = null;
-          if (project.teacher_profiles) {
-            const teacherProfile = Array.isArray(project.teacher_profiles) 
-              ? project.teacher_profiles[0] 
-              : project.teacher_profiles;
+          
+          // Extract categories from the nested structure early
+          const categories = project.categories 
+            ? project.categories
+                .map(pc => pc.category)
+                .filter(Boolean)
+                .map(cat => ({
+                  id: cat.id,
+                  name: cat.name
+                }))
+            : [];
+            
+          // If we have a teacher_id, fetch the teacher profile using admin client
+          if (project.teacher_id) {
+            try {
+              console.log('Fetching teacher profile for ID:', project.teacher_id);
               
-            if (teacherProfile) {
-              // Create display name from first and last name
-              let displayName = 'Teacher';
-              
-              if (teacherProfile.users) {
-                // Handle users as potentially an array or a single object
-                const userData = Array.isArray(teacherProfile.users) 
-                  ? teacherProfile.users[0] 
-                  : teacherProfile.users;
+              // Use supabaseAdmin to bypass RLS
+              const { data: teacherProfile, error: teacherError } = await supabaseAdmin
+                .from('teacher_profiles')
+                .select(`
+                  id, 
+                  user_id,
+                  school_name, 
+                  school_city, 
+                  school_state,
+                  position_title,
+                  bio
+                `)
+                .eq('id', project.teacher_id)
+                .single();
                 
-                if (userData) {
-                  const firstName = userData.first_name || '';
-                  const lastName = userData.last_name || '';
-                  if (firstName || lastName) {
-                    displayName = `${firstName} ${lastName}`.trim();
+              if (teacherError) {
+                console.error('Error fetching teacher profile:', teacherError);
+              } else if (teacherProfile) {
+                console.log('Teacher profile found:', teacherProfile);
+                
+                // Create consistent school data for all projects
+                const schoolData = {
+                  name: teacherProfile.school_name || 'School Name Not Available',
+                  city: teacherProfile.school_city || 'City Not Available',
+                  state: teacherProfile.school_state || 'State Not Available'
+                };
+                
+                // Now fetch the associated user data
+                const { data: userData, error: userError } = await supabaseAdmin
+                  .from('users')
+                  .select(`
+                    id,
+                    first_name,
+                    last_name,
+                    email,
+                    profile_image_url
+                  `)
+                  .eq('id', teacherProfile.user_id)
+                  .single();
+                
+                if (userError) {
+                  console.error('Error fetching user data:', userError);
+                } else if (userData) {
+                  console.log('User data found:', userData);
+                  
+                  // Create a display name from user data
+                  let displayName = '';
+                  
+                  if (userData.first_name || userData.last_name) {
+                    displayName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
+                  } else if (userData.email) {
+                    displayName = userData.email.split('@')[0];
+                  } else {
+                    displayName = teacherProfile.position_title || "Teacher";
                   }
+                  
+                  // Get the real profile image URL
+                  const profileImageUrl = userData.profile_image_url || null;
+                  console.log('Profile image URL:', profileImageUrl);
+                  
+                  teacherData = {
+                    id: teacherProfile.id,
+                    user_id: teacherProfile.user_id,
+                    display_name: displayName,
+                    profile_image_url: profileImageUrl,
+                    school: schoolData
+                  };
+                  
+                  console.log('Processed teacher data:', teacherData);
                 }
               }
-              
-              teacherData = {
-                id: teacherProfile.id,
-                display_name: displayName,
-                school: teacherProfile.school_name ? {
-                  name: teacherProfile.school_name,
-                  city: teacherProfile.school_city,
-                  state: teacherProfile.school_state
-                } : undefined
-              };
+            } catch (error) {
+              console.error('Error processing teacher data:', error);
             }
           }
           
           return {
             ...project,
-            teacher: teacherData
+            teacher: teacherData,
+            categories: categories
           };
-        }) || [];
+        })) || [];
         
         setProjects(formattedProjects);
         setFilteredProjects(formattedProjects);
@@ -160,9 +238,9 @@ export default function ProjectsList({
     };
 
     fetchProjects();
-  }, [featured, limit]);
+  }, [featured, limit, darkMode]);
 
-  // Filter projects when search query or category changes
+  // Filter projects when search query, category, or funding range changes
   useEffect(() => {
     if (!projects.length) return;
     
@@ -177,14 +255,62 @@ export default function ProjectsList({
       );
     }
     
-    // Apply category filter (this is a placeholder since we don't have categories in the data yet)
+    // Apply category filter
     if (categoryFilter && categoryFilter !== 'all') {
-      // In a real implementation, you would filter by category
-      // filtered = filtered.filter(project => project.category === categoryFilter);
+      console.log('Filtering by category:', categoryFilter);
+      console.log('Projects before category filter:', filtered.length);
+      
+      // Check if it's a comma-separated list of categories
+      if (categoryFilter.includes(',')) {
+        const categoryIds = categoryFilter.split(',');
+        console.log('Multiple categories detected:', categoryIds);
+        
+        filtered = filtered.filter(project => {
+          if (!project.categories || project.categories.length === 0) {
+            return false;
+          }
+          
+          // Check if any project category matches any of the filter categories
+          return project.categories.some(category => 
+            categoryIds.includes(category.id)
+          );
+        });
+      } else {
+        // Single category filter
+        filtered = filtered.filter(project => {
+          if (!project.categories || project.categories.length === 0) {
+            return false;
+          }
+          
+          return project.categories.some(category => 
+            category.id === categoryFilter
+          );
+        });
+      }
+      
+      console.log('Projects after category filter:', filtered.length);
+    }
+    
+    // Apply funding range filter
+    if (minFunding > 0 || maxFunding < 50000) {
+      console.log('Filtering by funding range:', { minFunding, maxFunding });
+      console.log('Projects before funding filter:', filtered.length);
+      
+      // Log each project's funding goal to see values
+      filtered.forEach(project => {
+        console.log(`Project "${project.title}": funding_goal=${project.funding_goal}`);
+      });
+      
+      filtered = filtered.filter(project => 
+        project.funding_goal >= minFunding && 
+        project.funding_goal <= maxFunding
+      );
+      
+      console.log('Projects after funding filter:', filtered.length);
     }
     
     setFilteredProjects(filtered);
-  }, [searchQuery, categoryFilter, projects]);
+  }, [searchQuery, categoryFilter, projects, minFunding, maxFunding]);
 
   const handleDonate = async (projectId: string) => {
     if (!user) {
@@ -235,18 +361,16 @@ export default function ProjectsList({
     : "/images/project-placeholder.svg";
 
   // Default avatar image to use when a teacher has no profile image
-  const defaultAvatarUrl = "/images/default-avatar.svg";
+  const defaultAvatarUrl = "/placeholder-avatar.png";
 
-  // Handle image error by replacing with default image
-  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    e.currentTarget.src = defaultImageUrl;
-    e.currentTarget.onerror = null; // Prevent infinite loops
+  // Next.js Image component handles errors internally, so these functions are simplified
+  // to just log errors for monitoring purposes
+  const handleImageError = () => {
+    console.error("Failed to load project image");
   };
 
-  // Handle avatar image error by replacing with default avatar
-  const handleAvatarError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    e.currentTarget.src = defaultAvatarUrl;
-    e.currentTarget.onerror = null; // Prevent infinite loops
+  const handleAvatarError = () => {
+    console.error("Failed to load avatar image");
   };
 
   // Function to get a deterministic color based on the teacher's name
@@ -274,66 +398,126 @@ export default function ProjectsList({
         <Link 
           href={`/projects/${project.id}`} 
           key={project.id} 
-          className="card project-card"
+          className="project-card"
         >
           <div className="project-image-container">
-            <img
-              src={project.main_image_url || defaultImageUrl}
-              alt={project.title || "Educational project"}
-              onError={handleImageError}
-            />
+            {project.main_image_url ? (
+              <Image
+                src={project.main_image_url}
+                alt={project.title || "Educational project"}
+                fill
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                className="object-cover"
+                priority={false}
+                loading="lazy"
+                onError={handleImageError}
+              />
+            ) : (
+              <Image
+                src={defaultImageUrl}
+                alt={project.title || "Educational project"}
+                fill
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                className="object-cover"
+                priority={false}
+                loading="lazy"
+              />
+            )}
             <div className="project-funding-badge">
               {Math.round((project.current_amount / project.funding_goal) * 100)}% Funded
-            </div>
-            {/* Always show Teacher Avatar on Image */}
-            <div className="absolute bottom-3 left-3 z-10">
-              <div className={`w-12 h-12 rounded-full overflow-hidden flex-shrink-0 border-2 border-white shadow-md flex items-center justify-center text-white font-medium text-xl ${getAvatarColor(project.teacher?.display_name || 'Teacher')}`}>
-                {getInitial(project.teacher?.display_name || 'Teacher')}
-              </div>
             </div>
           </div>
           
           <div className="project-content">
+            <div className="project-category">
+              {project.categories && project.categories.length > 0 
+                ? project.categories[0].name 
+                : "School Project"}
+            </div>
             <h3 className="project-title">{project.title}</h3>
             <p className="project-description">{project.description}</p>
             
-            {/* Project School Information */}
+            {project.teacher && (
+              <div className="project-teacher">
+                <div className="project-teacher-avatar">
+                  {/* Debug log to confirm profile image URL */}
+                  {console.log('Rendering teacher avatar with URL:', project.teacher.profile_image_url)}
+                  
+                  {project.teacher.profile_image_url ? (
+                    // If we have a real profile image URL, use the Image component directly
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage
+                        src={project.teacher.profile_image_url}
+                        alt={project.teacher.display_name}
+                        className="object-cover"
+                      />
+                      <AvatarFallback 
+                        className="text-sm"
+                        style={{ backgroundColor: getAvatarColor(project.teacher.display_name) }}
+                      >
+                        {getInitial(project.teacher.display_name)}
+                      </AvatarFallback>
+                    </Avatar>
+                  ) : (
+                    // If no profile image, use a colored initial avatar
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback 
+                        className="text-sm"
+                        style={{ backgroundColor: getAvatarColor(project.teacher.display_name) }}
+                      >
+                        {getInitial(project.teacher.display_name)}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                </div>
+                <div className="project-teacher-info">
+                  <div className="project-teacher-name">{project.teacher.display_name}</div>
+                  {project.teacher.school && (
+                    <div className="project-teacher-school">
+                      {project.teacher.school.name}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            
             {project.teacher?.school && (
               <div className="project-impact">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                <span>
-                  {project.teacher.school.name}, {project.teacher.school.city}, {project.teacher.school.state}
-                </span>
+                {project.teacher.school.city}, {project.teacher.school.state}
               </div>
             )}
             
             <div className="project-progress">
-              <div className="flex justify-between text-sm mb-2">
-                <span>{formatCurrency(project.current_amount)} raised</span>
-                <span>{formatCurrency(project.funding_goal)} goal</span>
+              <div className="project-progress-stats">
+                <div className="project-raised">{formatCurrency(project.current_amount)}</div>
+                <div className="project-goal">of {formatCurrency(project.funding_goal)}</div>
               </div>
               <div className="project-progress-bar-container">
                 <div 
                   className="project-progress-bar" 
-                  style={{ width: `${Math.min(100, Math.round((project.current_amount / project.funding_goal) * 100))}%` }}
+                  style={{ 
+                    width: `${Math.min(100, Math.round((project.current_amount / project.funding_goal) * 100))}%` 
+                  }}
                 ></div>
               </div>
             </div>
             
             <button 
-              className="project-donate-button bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
+              className="project-donate-button"
               onClick={(e) => {
                 e.preventDefault();
                 handleDonate(project.id);
               }}
             >
-              Donate to Project
+              Support This Project
             </button>
           </div>
         </Link>
       ))}
     </div>
   );
-} 
+}
