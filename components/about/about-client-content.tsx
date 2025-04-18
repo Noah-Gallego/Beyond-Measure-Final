@@ -32,10 +32,10 @@ export function AboutClientContent() {
           <div className="grid gap-6 lg:grid-cols-2 lg:gap-12">
             <div className="flex flex-col justify-center space-y-4">
               <div className="space-y-2">
-                <div className="inline-flex items-center rounded-full border border-[#3AB5E9] bg-[#3AB5E9]/10 px-3 py-1 text-sm text-[#3AB5E9]">
+                <div className="inline-flex items-center rounded-full border border-sky bg-sky/10 px-3 py-1 text-sm text-sky">
                   Our Story
                 </div>
-                <h2 className="text-3xl font-bold tracking-tighter text-[#0E5D7F] sm:text-4xl">
+                <h2 className="text-3xl font-bold tracking-tighter text-navy sm:text-4xl">
                   Founded by Educators, for Educators
                 </h2>
                 <p className="text-muted-foreground">
@@ -51,11 +51,11 @@ export function AboutClientContent() {
             </div>
             <div className="flex items-center justify-center">
               <Image
-                src="/placeholder.svg?height=400&width=600"
+                src="/about/founders.jpg"
                 width={600}
                 height={400}
                 alt="Teachers and students in a classroom"
-                className="rounded-lg object-cover"
+                className="rounded-lg object-cover shadow-lg"
               />
             </div>
           </div>
@@ -63,14 +63,14 @@ export function AboutClientContent() {
       </section>
 
       {/* Our Values */}
-      <section className="bg-[#F7DBA7]/10 py-16 md:py-24">
+      <section className="bg-sun-light/10 py-16 md:py-24">
         <div className="container px-4 md:px-6">
           <div className="flex flex-col items-center justify-center space-y-4 text-center">
             <div className="space-y-2">
-              <div className="inline-flex items-center rounded-full border border-[#A8BF87] bg-[#A8BF87]/10 px-3 py-1 text-sm text-[#A8BF87]">
+              <div className="inline-flex items-center rounded-full border border-sun bg-sun/10 px-3 py-1 text-sm text-sun">
                 Our Values
               </div>
-              <h2 className="text-3xl font-bold tracking-tighter text-[#0E5D7F] sm:text-4xl">What We Stand For</h2>
+              <h2 className="text-3xl font-bold tracking-tighter text-navy sm:text-4xl">What We Stand For</h2>
               <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl">
                 The core values that drive our mission and guide our platform.
               </p>
@@ -81,37 +81,37 @@ export function AboutClientContent() {
               {
                 title: "Educational Equity",
                 description: "We believe every student deserves access to quality educational resources, regardless of their school's funding or location.",
-                color: "border-[#3AB5E9]/20 bg-[#3AB5E9]/5",
+                color: "border-sky/20 bg-sky/5",
               },
               {
                 title: "Teacher Empowerment",
                 description: "We champion teachers' creativity and initiative, providing them the platform to bring their classroom visions to life.",
-                color: "border-[#E96951]/20 bg-[#E96951]/5",
+                color: "border-coral/20 bg-coral/5",
               },
               {
                 title: "Community Impact",
                 description: "We connect caring donors with classrooms to create meaningful change in education that ripples through communities.",
-                color: "border-[#A8BF87]/20 bg-[#A8BF87]/5",
+                color: "border-sun/20 bg-sun/5",
               },
               {
                 title: "Transparency",
                 description: "We believe in complete transparency in how funds are used, ensuring donors see the direct impact of their contributions.",
-                color: "border-[#F7DBA7]/20 bg-[#F7DBA7]/5",
+                color: "border-sun-light/20 bg-sun-light/5",
               },
               {
                 title: "Innovation",
                 description: "We support creative teaching approaches that engage students and promote deeper learning experiences.",
-                color: "border-[#0E5D7F]/20 bg-[#0E5D7F]/5",
+                color: "border-navy/20 bg-navy/5",
               },
               {
                 title: "Accessibility",
                 description: "We make fundraising easy and accessible for all teachers, regardless of technical experience or grant-writing skills.",
-                color: "border-[#3AB5E9]/20 bg-[#3AB5E9]/5",
+                color: "border-sky/20 bg-sky/5",
               },
             ].map((value, index) => (
               <Card key={index} className={`${value.color}`}>
                 <CardHeader>
-                  <CardTitle className="text-[#0E5D7F]">{value.title}</CardTitle>
+                  <CardTitle className="text-navy">{value.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-muted-foreground">{value.description}</p>
@@ -127,10 +127,10 @@ export function AboutClientContent() {
         <div className="container px-4 md:px-6">
           <div className="flex flex-col items-center justify-center space-y-4 text-center">
             <div className="space-y-2">
-              <div className="inline-flex items-center rounded-full border border-[#E96951] bg-[#E96951]/10 px-3 py-1 text-sm text-[#E96951]">
+              <div className="inline-flex items-center rounded-full border border-coral bg-coral/10 px-3 py-1 text-sm text-coral">
                 Our Team
               </div>
-              <h2 className="text-3xl font-bold tracking-tighter text-[#0E5D7F] sm:text-4xl">
+              <h2 className="text-3xl font-bold tracking-tighter text-navy sm:text-4xl">
                 Meet the People Behind BeyondMeasure
               </h2>
               <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl">
@@ -144,39 +144,39 @@ export function AboutClientContent() {
                 name: "Dr. Elena Rodriguez",
                 role: "Founder & CEO",
                 bio: "Former elementary school teacher with a passion for ensuring all classrooms have the resources they need.",
-                image: "/placeholder.svg?height=300&width=300",
+                image: "/founder1.jpg",
               },
               {
                 name: "Marcus Chen",
                 role: "Chief Technology Officer",
                 bio: "Educational technologist focused on creating accessible platforms that connect donors with classrooms.",
-                image: "/placeholder.svg?height=300&width=300",
+                image: "/founder2.jpg",
               },
               {
                 name: "Aisha Johnson",
                 role: "Director of Teacher Success",
                 bio: "Former high school science teacher dedicated to helping educators create compelling project campaigns.",
-                image: "/placeholder.svg?height=300&width=300",
+                image: "/founder3.jpg",
               },
               {
                 name: "David Park",
                 role: "Head of Donor Relations",
                 bio: "Nonprofit fundraising expert committed to building meaningful connections between donors and schools.",
-                image: "/placeholder.svg?height=300&width=300",
+                image: "/teacher1.jpg",
               },
             ].map((member, index) => (
-              <Card key={index}>
+              <Card key={index} className="hover:shadow-lg transition-shadow">
                 <CardContent className="p-4">
                   <Image
-                    src={member.image || "/placeholder.svg"}
+                    src={member.image}
                     width={300}
                     height={300}
                     alt={member.name}
-                    className="mx-auto aspect-square rounded-full object-cover"
+                    className="mx-auto aspect-square rounded-full object-cover shadow-sm border-2 border-sky/20"
                   />
                   <CardHeader className="p-0 pt-4 text-center">
-                    <CardTitle className="text-lg text-[#0E5D7F]">{member.name}</CardTitle>
-                    <CardDescription className="text-[#E96951]">{member.role}</CardDescription>
+                    <CardTitle className="text-lg text-navy">{member.name}</CardTitle>
+                    <CardDescription className="text-coral">{member.role}</CardDescription>
                   </CardHeader>
                   <p className="mt-2 text-center text-sm text-muted-foreground">{member.bio}</p>
                 </CardContent>
