@@ -25,10 +25,9 @@ import { getDashboardUrlByRole } from "@/utils/auth-helpers"
 interface LoginDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onDemoLogin?: () => void
 }
 
-export function LoginDialog({ open, onOpenChange, onDemoLogin }: LoginDialogProps) {
+export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [rememberMe, setRememberMe] = useState(false)
@@ -61,11 +60,6 @@ export function LoginDialog({ open, onOpenChange, onDemoLogin }: LoginDialogProp
       
       console.log("Sign in successful:", data.user?.id);
 
-      // Call the onDemoLogin callback if provided (to update UI state)
-      if (onDemoLogin) {
-        onDemoLogin()
-      }
-
       // Get the appropriate dashboard URL based on user role
       const dashboardUrl = getDashboardUrlByRole(data.user)
       
@@ -91,44 +85,6 @@ export function LoginDialog({ open, onOpenChange, onDemoLogin }: LoginDialogProp
     }
   }
 
-  const handleDemoLogin = async () => {
-    setIsLoading(true)
-    setErrorMessage("")
-    
-    try {
-      // Demo credentials - in a real app, this would be configurable or more secure
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: 'demo@beyondmeasure.org',
-        password: 'demouser123',
-      })
-      
-      if (error) {
-        setErrorMessage(error.message)
-        setIsLoading(false)
-        return
-      }
-
-      // Call the onDemoLogin callback if provided
-      if (onDemoLogin) {
-        onDemoLogin()
-      }
-
-      // Get the appropriate dashboard URL based on user role
-      const dashboardUrl = getDashboardUrlByRole(data.user)
-      
-      // Close the dialog before navigation
-      onOpenChange(false)
-      
-      // Redirect to role-specific dashboard
-      console.log(`Redirecting to ${dashboardUrl} based on role: ${data.user?.user_metadata?.role || 'donor'}`)
-      router.push(dashboardUrl)
-    } catch (error) {
-      console.error('Demo login error:', error)
-      setErrorMessage("An unexpected error occurred. Please try again.")
-      setIsLoading(false)
-    }
-  }
-  
   // Handle switching to signup dialog
   const handleShowSignup = () => {
     setShowSignup(true)
@@ -221,52 +177,6 @@ export function LoginDialog({ open, onOpenChange, onDemoLogin }: LoginDialogProp
 
             <Button type="submit" className="w-full bg-navy/10 border border-navy text-navy hover:bg-navy/20" disabled={isLoading}>
               {isLoading ? "Logging in..." : "Log In"}
-            </Button>
-
-            {/* For testing, add a simple direct login button */}
-            <div className="text-center mt-2">
-              <button
-                type="button"
-                onClick={async () => {
-                  if (isLoading) return;
-                  try {
-                    console.log("Direct login attempt with:", { email });
-                    setIsLoading(true);
-                    
-                    const { data, error } = await supabase.auth.signInWithPassword({
-                      email,
-                      password,
-                    });
-                    
-                    if (error) {
-                      console.error("Direct login error:", error);
-                      setErrorMessage(error.message);
-                      return;
-                    }
-                    
-                    console.log("Direct login successful:", data);
-                    window.location.href = '/dashboard'; // Direct navigation without router
-                  } catch (e) {
-                    console.error("Direct login exception:", e);
-                    setErrorMessage("An unexpected error occurred");
-                  } finally {
-                    setIsLoading(false);
-                  }
-                }}
-                className="text-sm text-blue-600 hover:underline mt-1"
-                disabled={isLoading}
-              >
-                {isLoading ? "Please wait..." : "Login without redirect"}
-              </button>
-            </div>
-
-            <Button 
-              type="button" 
-              variant="salmon" 
-              className="w-full" 
-              onClick={handleDemoLogin}
-              disabled={isLoading}>
-              {isLoading ? "Loading..." : "Demo Log In"}
             </Button>
 
             <div className="mt-6 text-center">

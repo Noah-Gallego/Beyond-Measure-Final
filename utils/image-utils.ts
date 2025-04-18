@@ -63,117 +63,228 @@ export async function fetchProfileImage(userId: string): Promise<string | null> 
   try {
     console.log(`Attempting to fetch profile image for user: ${userId}`);
     
-    // Check if we're dealing with an auth ID and convert to DB ID if needed
-    if (userId.includes('-') && userId.length > 30) {
-      const dbUserId = await getDbUserIdFromAuthId(userId);
-      if (dbUserId) {
-        console.log(`Converted auth ID ${userId} to database ID ${dbUserId}`);
-        userId = dbUserId;
+    // We need to get both IDs - db user ID and auth ID
+    let dbUserId = userId;
+    let authId = null;
+    
+    // Check if the ID is already in the auth format
+    const isAuthIdFormat = userId.includes('-') && userId.length > 30;
+    
+    if (isAuthIdFormat) {
+      authId = userId;
+      // Try to get the database user ID
+      const dbId = await getDbUserIdFromAuthId(userId);
+      if (dbId) {
+        dbUserId = dbId;
+        console.log(`Using auth ID ${authId} and database ID ${dbUserId}`);
+      }
+    } else {
+      // This might be a database user ID or teacher profile ID
+      // First check if it's a database user ID 
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('auth_id, profile_image_url')
+        .eq('id', userId)
+        .maybeSingle();
+        
+      if (!userError && userData) {
+        if (userData.auth_id) {
+          authId = userData.auth_id;
+          console.log(`Found auth ID ${authId} for database ID ${userId}`);
+          
+          // If we found a profile_image_url in this query, use it directly
+          if (userData.profile_image_url) {
+            console.log(`Found profile_image_url in users table: ${userData.profile_image_url}`);
+            try {
+              const response = await fetch(userData.profile_image_url, { method: 'HEAD' });
+              if (response.ok) {
+                return userData.profile_image_url;
+              }
+            } catch (e) {
+              console.warn('Error verifying user table URL:', e);
+            }
+          }
+        }
+      } else {
+        // Could be a teacher profile ID - check that
+        const { data: teacherData, error: teacherError } = await supabase
+          .from('teacher_profiles')
+          .select('user_id')
+          .eq('id', userId)
+          .single();
+          
+        if (!teacherError && teacherData && teacherData.user_id) {
+          dbUserId = teacherData.user_id;
+          console.log(`Found database user ID ${dbUserId} for teacher profile ${userId}`);
+          
+          // Now get the auth ID from the users table
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('auth_id, profile_image_url')
+            .eq('id', dbUserId)
+            .maybeSingle();
+            
+          if (!userError && userData && userData.auth_id) {
+            authId = userData.auth_id;
+            console.log(`Found auth ID ${authId} for database ID ${dbUserId}`);
+            
+            // If we found a profile_image_url in this query, use it directly
+            if (userData.profile_image_url) {
+              console.log(`Found profile_image_url in users table: ${userData.profile_image_url}`);
+              try {
+                const response = await fetch(userData.profile_image_url, { method: 'HEAD' });
+                if (response.ok) {
+                  // Update the profile table to be consistent
+                  await supabase
+                    .from('profiles')
+                    .update({ profile_image_url: userData.profile_image_url })
+                    .eq('id', authId);
+                  
+                  return userData.profile_image_url;
+                }
+              } catch (e) {
+                console.warn('Error verifying user table URL:', e);
+              }
+            }
+          }
+        }
       }
     }
     
-    // First check if the user has a profile_image_url in the profiles table
+    // Now that we have both IDs, check the profile table
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('profile_image_url')
-      .eq('id', userId)
-      .single();
-    
+      .eq('id', authId || dbUserId)
+      .maybeSingle();
+      
     if (!profileError && profileData?.profile_image_url) {
       console.log(`Found profile_image_url in profiles table: ${profileData.profile_image_url}`);
-      
-      // Verify the URL works
       try {
         const response = await fetch(profileData.profile_image_url, { method: 'HEAD' });
         if (response.ok) {
+          // If we have both IDs, ensure the users table is updated too
+          if (dbUserId && authId && dbUserId !== authId) {
+            await supabase
+              .from('users')
+              .update({ profile_image_url: profileData.profile_image_url })
+              .eq('id', dbUserId);
+          }
+          
           return profileData.profile_image_url;
-        } else {
-          console.warn(`Profile image URL exists but not accessible: ${profileData.profile_image_url}`);
         }
       } catch (e) {
-        console.warn('Error verifying profile image URL:', e);
+        console.warn('Error verifying profile table URL:', e);
+        // Continue to check storage even if verification fails
       }
     }
     
-    // If no profile_image_url or there was an error, try to get from storage
-    console.log(`Trying to fetch from storage for user: ${userId}`);
+    // If we get here, we need to check storage
+    // Order of priority: auth ID (more likely) then db user ID
+    const idsToCheck = [];
+    if (authId) idsToCheck.push(authId);
+    if (dbUserId && dbUserId !== authId) idsToCheck.push(dbUserId);
     
-    // Try multiple formats
-    const formats = ['jpg', 'png', 'jpeg', 'gif', 'webp'];
+    // Try multiple formats and prioritize newer formats
+    const formats = ['gif', 'jpeg', 'jpg', 'png', 'webp'];
     
-    for (const format of formats) {
-      const { data } = supabase.storage
-        .from('profile_images')
-        .getPublicUrl(`${userId}/profile.${format}`);
+    for (const id of idsToCheck) {
+      console.log(`Checking storage with ID: ${id}`);
       
-      try {
-        console.log(`Checking format ${format} at URL: ${data.publicUrl}`);
-        const response = await fetch(data.publicUrl, { method: 'HEAD' });
-        if (response.ok) {
-          console.log(`Found working image at format ${format}`);
-          
-          // Update the profile with this URL if it works
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({ profile_image_url: data.publicUrl })
-            .eq('id', userId);
+      for (const format of formats) {
+        const { data } = supabase.storage
+          .from('profile_images')
+          .getPublicUrl(`${id}/profile.${format}`);
+        
+        try {
+          const response = await fetch(data.publicUrl, { method: 'HEAD' });
+          if (response.ok) {
+            console.log(`Found working image at ${data.publicUrl}`);
             
-          if (updateError) {
-            console.warn('Error updating profile with found image URL:', updateError);
+            // Update both database tables with this URL
+            if (authId) {
+              await supabase
+                .from('profiles')
+                .update({ profile_image_url: data.publicUrl })
+                .eq('id', authId);
+            }
+            
+            if (dbUserId) {
+              await supabase
+                .from('users')
+                .update({ profile_image_url: data.publicUrl })
+                .eq('id', dbUserId);
+            }
+            
+            return data.publicUrl;
           }
+        } catch (e) {
+          console.warn(`Error checking ${format} for ${id}:`, e);
+        }
+      }
+      
+      // Check for timestamp files
+      try {
+        const { data: folderData, error: folderError } = await supabase.storage
+          .from('profile_images')
+          .list(id);
           
-          return data.publicUrl;
+        if (!folderError && folderData && folderData.length > 0) {
+          const imageFiles = folderData.filter(item => {
+            const name = item.name.toLowerCase();
+            return name.endsWith('.jpg') || name.endsWith('.jpeg') || 
+                   name.endsWith('.png') || name.endsWith('.gif') || 
+                   name.endsWith('.webp');
+          });
+          
+          if (imageFiles.length > 0) {
+            // Sort by newest timestamp
+            const mostRecent = imageFiles.sort((a, b) => {
+              const aTime = parseInt(a.name.split('.')[0], 10) || 0;
+              const bTime = parseInt(b.name.split('.')[0], 10) || 0;
+              return bTime - aTime;
+            })[0];
+            
+            const { data } = supabase.storage
+              .from('profile_images')
+              .getPublicUrl(`${id}/${mostRecent.name}`);
+            
+            try {
+              const response = await fetch(data.publicUrl, { method: 'HEAD' });
+              if (response.ok) {
+                console.log(`Found working timestamp image at ${data.publicUrl}`);
+                
+                // Update both database tables with this URL
+                if (authId) {
+                  await supabase
+                    .from('profiles')
+                    .update({ profile_image_url: data.publicUrl })
+                    .eq('id', authId);
+                }
+                
+                if (dbUserId) {
+                  await supabase
+                    .from('users')
+                    .update({ profile_image_url: data.publicUrl })
+                    .eq('id', dbUserId);
+                }
+                
+                return data.publicUrl;
+              }
+            } catch (e) {
+              console.warn(`Error checking timestamp image for ${id}:`, e);
+            }
+          }
         }
       } catch (e) {
-        console.warn(`Error verifying ${format} image:`, e);
+        console.warn(`Error listing files for ${id}:`, e);
       }
     }
     
-    // If no formats worked, try the old timestamp-based format as a fallback
-    try {
-      // List files in user's folder
-      const { data: folderData, error: folderError } = await supabase.storage
-        .from('profile_images')
-        .list(userId);
-        
-      if (!folderError && folderData && folderData.length > 0) {
-        // Find image files
-        const imageFiles = folderData.filter(item => {
-          const name = item.name.toLowerCase();
-          return name.endsWith('.jpg') || name.endsWith('.png') || 
-                 name.endsWith('.jpeg') || name.endsWith('.gif') || 
-                 name.endsWith('.webp');
-        });
-        
-        if (imageFiles.length > 0) {
-          // Get the most recent one
-          const mostRecent = imageFiles.sort((a, b) => {
-            const aTime = parseInt(a.name.split('.')[0], 10) || 0;
-            const bTime = parseInt(b.name.split('.')[0], 10) || 0;
-            return bTime - aTime;
-          })[0];
-          
-          const { data } = supabase.storage
-            .from('profile_images')
-            .getPublicUrl(`${userId}/${mostRecent.name}`);
-          
-          try {
-            const response = await fetch(data.publicUrl, { method: 'HEAD' });
-            if (response.ok) {
-              return data.publicUrl;
-            }
-          } catch (e) {
-            console.warn('Error verifying fallback image:', e);
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('Error listing user folder:', e);
-    }
-    
+    console.log('No profile image found after trying all methods.');
     return null;
   } catch (err) {
-    console.warn('Error in fetchProfileImage:', err);
+    console.error('Error in fetchProfileImage:', err);
     return null;
   }
 }
@@ -227,4 +338,74 @@ export function getAvatarColor(name?: string): string {
 export function getUserInitials(firstName?: string, lastName?: string): string {
   if (!firstName && !lastName) return "U";
   return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`;
+}
+
+/**
+ * Cleans up old profile images to prevent storage buildup
+ * Keeps the main profile.extension file and removes old timestamped files
+ * @param userId - The user ID (can be auth ID or database user ID)
+ * @param exceptFiles - Optional array of filenames to preserve
+ * @returns The number of files deleted
+ */
+export async function cleanupProfileImages(userId: string, exceptFiles: string[] = []): Promise<number> {
+  try {
+    console.log(`Cleaning up profile images for user: ${userId}`);
+    
+    // First list all files in the user's folder
+    const { data: folderData, error: folderError } = await supabase.storage
+      .from('profile_images')
+      .list(userId);
+      
+    if (folderError) {
+      console.error(`Error listing files for ${userId}:`, folderError);
+      return 0;
+    }
+    
+    if (!folderData || folderData.length === 0) {
+      console.log(`No images found for ${userId}`);
+      return 0;
+    }
+    
+    // Identify files to delete:
+    // 1. Keep current profile.* files since they are the standardized name
+    // 2. Keep any files explicitly requested to preserve
+    // 3. Delete older timestamp-based files
+    const filesToDelete = folderData.filter(file => {
+      // Skip directories
+      if (file.id === null) return false;
+      
+      // Skip files in the exception list
+      if (exceptFiles.includes(file.name)) return false;
+      
+      // Keep the standardized profile.* files
+      if (file.name.startsWith('profile.')) return false;
+      
+      // Otherwise, we'll delete timestamp-based and other non-standard files
+      return true;
+    }).map(file => `${userId}/${file.name}`);
+    
+    if (filesToDelete.length === 0) {
+      console.log(`No obsolete files to delete for ${userId}`);
+      return 0;
+    }
+    
+    console.log(`Deleting ${filesToDelete.length} old profile images`);
+    
+    // Delete the files in batches to prevent hitting API limits
+    // Supabase supports deleting multiple files at once
+    const { data, error } = await supabase.storage
+      .from('profile_images')
+      .remove(filesToDelete);
+      
+    if (error) {
+      console.error(`Error deleting old profile images:`, error);
+      return 0;
+    }
+    
+    console.log(`Successfully deleted ${filesToDelete.length} old profile images`);
+    return filesToDelete.length;
+  } catch (err) {
+    console.error('Error in cleanupProfileImages:', err);
+    return 0;
+  }
 } 

@@ -1,9 +1,30 @@
 'use client';
 
-import CheckDatabase from '@/components/CheckDatabase';
+import { Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 
-export default function DatabaseCheckPage() {
+// Dynamically import CheckDatabase component to handle useSearchParams properly
+const CheckDatabaseComponent = dynamic(
+  () => import('@/components/CheckDatabase'),
+  { ssr: false }
+);
+
+// Loading fallback component
+function DbCheckLoading() {
+  return (
+    <div className="container mx-auto py-10 px-4">
+      <h1 className="text-3xl font-bold mb-6">Database Check</h1>
+      <p className="mb-6 text-gray-600">Loading database check tools...</p>
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    </div>
+  );
+}
+
+// Main content component
+function DatabaseCheckContent() {
   return (
     <div className="container mx-auto py-10 px-4">
       <h1 className="text-3xl font-bold mb-6">Database Check</h1>
@@ -32,7 +53,18 @@ export default function DatabaseCheckPage() {
         </Link>
       </div>
       
-      <CheckDatabase />
+      <Suspense fallback={<DbCheckLoading />}>
+        <CheckDatabaseComponent />
+      </Suspense>
     </div>
+  );
+}
+
+// Main export with double Suspense
+export default function DatabaseCheckPage() {
+  return (
+    <Suspense fallback={<DbCheckLoading />}>
+      <DatabaseCheckContent />
+    </Suspense>
   );
 } 

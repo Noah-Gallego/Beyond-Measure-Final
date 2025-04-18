@@ -1,14 +1,38 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { supabase } from '@/utils/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import ProfileAvatar from '@/components/ProfileAvatar';
-import { fetchProfileImage } from '@/utils/image-utils';
+import { fetchProfileImage, cleanupProfileImages } from '@/utils/image-utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import ClientOnly from '@/components/client-only';
 
-export default function ProfileImageDebugPage() {
+// Loading component
+function ProfileImageDebugLoading() {
+  return (
+    <div className="container mx-auto py-10 px-4">
+      <h1 className="text-3xl font-bold mb-6">Profile Image Debug</h1>
+      <div className="flex justify-center">
+        <div className="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+      </div>
+    </div>
+  );
+}
+
+// Component that safely uses useSearchParams
+function SearchParamsHandler() {
+  // Import dynamically to ensure it's only used within a component wrapped in Suspense
+  const { useSearchParams } = require('next/navigation');
+  const searchParams = useSearchParams();
+  const userId = searchParams?.get('user_id') || '';
+  
+  return <ProfileImageDebugContent userId={userId} />;
+}
+
+// Inner content component that does not directly use useSearchParams
+function ProfileImageDebugContent({ userId }: { userId: string }) {
   const { user } = useAuth();
   const [profiles, setProfiles] = useState<any[]>([]);
   const [uploadStatus, setUploadStatus] = useState('');
@@ -17,6 +41,7 @@ export default function ProfileImageDebugPage() {
   const [databaseUserId, setDatabaseUserId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [fixResult, setFixResult] = useState<any>(null);
+  const [cacheBustTimestamp, setCacheBustTimestamp] = useState(Date.now());
   
   const forceRefresh = () => {
     setRefreshKey(prevKey => prevKey + 1);
@@ -77,6 +102,7 @@ export default function ProfileImageDebugPage() {
     setUploadStatus('Uploading image...');
     
     try {
+      // Always use the auth ID for storage paths
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}/profile.${fileExt}`;
       
@@ -107,18 +133,78 @@ export default function ProfileImageDebugPage() {
         setUploadStatus(`Image URL verification error: ${verifyError}`);
       }
       
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ profile_image_url: publicUrl })
-        .eq('id', user.id);
-        
-      if (updateError) {
-        throw updateError;
+      // Create a synchronized update for all related tables
+      const updatePromises = [];
+      
+      // 1. Update profiles table with auth ID
+      updatePromises.push(
+        supabase
+          .from('profiles')
+          .update({ profile_image_url: publicUrl })
+          .eq('id', user.id)
+      );
+      
+      // 2. If we have a database user ID, update users table
+      if (databaseUserId) {
+        updatePromises.push(
+          supabase
+            .from('users')
+            .update({ profile_image_url: publicUrl })
+            .eq('id', databaseUserId)
+        );
       }
       
-      setUploadStatus('Profile updated with new image URL');
+      // 3. Update auth profile directly
+      updatePromises.push(
+        supabase.auth.updateUser({
+          data: { profile_image_url: publicUrl }
+        })
+      );
       
+      // Execute all updates in parallel
+      const results = await Promise.allSettled(updatePromises);
+      
+      // Check for any errors
+      const errors = results
+        .filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && r.value?.error))
+        .map(r => r.status === 'rejected' ? r.reason : (r as any).value.error);
+      
+      if (errors.length > 0) {
+        setUploadStatus(`Warning: Some updates failed: ${JSON.stringify(errors)}`);
+      } else {
+        setUploadStatus('All profile tables updated successfully with new image URL');
+      }
+      
+      // Force an aggressive refresh to ensure UI updates
+      setRefreshKey(prev => prev + 100);
       getProfiles();
+      
+      // Try to refresh profile image cache
+      try {
+        await fetchProfileImage(user.id);
+        if (databaseUserId) {
+          await fetchProfileImage(databaseUserId);
+        }
+      } catch (e) {
+        console.error('Error refreshing profile images:', e);
+      }
+      
+      // Clean up old profile images
+      try {
+        setUploadStatus('Cleaning up old profile images...');
+        
+        let deletedCount = 0;
+        if (user.id) {
+          deletedCount += await cleanupProfileImages(user.id, [`profile.${fileExt}`]);
+        }
+        if (databaseUserId) {
+          deletedCount += await cleanupProfileImages(databaseUserId, [`profile.${fileExt}`]);
+        }
+        
+        setUploadStatus(`Deleted ${deletedCount} old profile images`);
+      } catch (cleanupError: any) {
+        setUploadStatus(`Warning: Failed to clean up old images: ${cleanupError.message}`);
+      }
       
       setUploadStatus('Upload completed successfully!');
     } catch (error: any) {
@@ -224,6 +310,217 @@ export default function ProfileImageDebugPage() {
     }, 500);
   };
   
+  const forceClearImageCache = () => {
+    setUploadStatus('Clearing browser image cache...');
+    
+    // Update timestamp to force cache-busting
+    setCacheBustTimestamp(Date.now());
+    
+    // Clear browser cache for images with cache API if available
+    if ('caches' in window) {
+      caches.keys().then(names => {
+        names.forEach(name => {
+          caches.delete(name);
+        });
+      });
+    }
+    
+    // Force reload all images on the page
+    const allImages = document.querySelectorAll('img');
+    allImages.forEach(img => {
+      const originalSrc = img.src.split('?')[0];
+      img.src = `${originalSrc}?t=${Date.now()}`;
+    });
+    
+    // Specifically update Maria's image if this is her profile
+    if (user?.id === '89e55400-0f0e-4a27-91f1-f746d31dcf81') {
+      const MARIA_IMAGE_URL = "https://efneocmdolkzdfhtqkpl.supabase.co/storage/v1/object/public/profile_images/89e55400-0f0e-4a27-91f1-f746d31dcf81/profile.gif";
+      
+      // Try to find Maria's avatar specifically
+      allImages.forEach(img => {
+        if (img.alt && (img.alt.includes('Maria') || img.alt.includes('MR'))) {
+          img.src = `${MARIA_IMAGE_URL}?t=${Date.now()}`;
+        }
+      });
+    }
+    
+    // Reload Avatar components by forcing a refresh
+    setRefreshKey(prevKey => prevKey + 100); // Use a larger increment to ensure a refresh
+    
+    // Also force rebuild service workers
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        for (const registration of registrations) {
+          registration.update();
+        }
+      });
+    }
+    
+    // Fetch fresh profile data
+    getProfiles();
+    
+    // Also try to fetch the user's image directly via the utility function
+    if (user) {
+      (async () => {
+        try {
+          // Try to get the image directly for the current user
+          const imageUrl = await fetchProfileImage(user.id);
+          if (imageUrl) {
+            setUploadStatus(`Found working image at: ${imageUrl}`);
+          }
+        } catch (e) {
+          console.error('Error fetching profile image:', e);
+        }
+      })();
+    }
+    
+    setUploadStatus('Browser cache cleared and images reloaded. Images should now show updated versions.');
+    
+    // Finally, try the fix profile API as a last resort
+    if (databaseUserId) {
+      setTimeout(() => {
+        handleFixProfileImage();
+      }, 500);
+    }
+  };
+  
+  const handleCleanupImages = async () => {
+    if (!user) {
+      setUploadStatus('Error: No user logged in');
+      return;
+    }
+    
+    setUploading(true);
+    setUploadStatus('Cleaning up profile images...');
+    
+    try {
+      let deletedCount = 0;
+      
+      if (user.id) {
+        setUploadStatus(`Cleaning up images for auth ID: ${user.id}...`);
+        const authCleanupCount = await cleanupProfileImages(user.id);
+        deletedCount += authCleanupCount;
+        setUploadStatus(`Deleted ${authCleanupCount} images for auth ID`);
+      }
+      
+      if (databaseUserId) {
+        setUploadStatus(`Cleaning up images for database ID: ${databaseUserId}...`);
+        const dbCleanupCount = await cleanupProfileImages(databaseUserId);
+        deletedCount += dbCleanupCount;
+        setUploadStatus(`Deleted ${dbCleanupCount} images for database ID`);
+      }
+      
+      setUploadStatus(`Cleanup complete. Deleted ${deletedCount} old profile images.`);
+      
+      // Refresh the profiles
+      getProfiles();
+      
+    } catch (error: any) {
+      console.error('Error cleaning up images:', error);
+      setUploadStatus(`Error cleaning up images: ${error.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+  
+  const handleCleanupAllImages = async () => {
+    if (!confirm('This will clean up old profile images for ALL users in the system. Continue?')) {
+      return;
+    }
+    
+    setUploading(true);
+    setUploadStatus('Cleaning up ALL user profile images (this may take a while)...');
+    
+    try {
+      const response = await fetch('/debug/profile-image/api', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action: 'cleanup' })
+      });
+      
+      const result = await response.json();
+      
+      setUploadStatus(`Global cleanup result: ${JSON.stringify(result, null, 2)}`);
+      
+      // Refresh profiles
+      getProfiles();
+      
+    } catch (error: any) {
+      console.error('Error in global cleanup:', error);
+      setUploadStatus(`Error in global cleanup: ${error.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+  
+  const handleForceCreatePlaceholder = async () => {
+    if (!databaseUserId) {
+      setUploadStatus('Error: No user ID available');
+      return;
+    }
+    
+    setUploading(true);
+    setUploadStatus('Creating placeholder image...');
+    
+    try {
+      const response = await fetch('/debug/profile-image/api', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          userId: databaseUserId,
+          createPlaceholder: true 
+        })
+      });
+      
+      const result = await response.json();
+      
+      setUploadStatus(`Create placeholder result: ${JSON.stringify(result, null, 2)}`);
+      
+      // Refresh everything
+      getProfiles();
+      setRefreshKey(prev => prev + 1);
+      
+    } catch (error: any) {
+      console.error('Error creating placeholder:', error);
+      setUploadStatus(`Error: ${error.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+  
+  const handleFixMariaProfile = async () => {
+    setUploading(true);
+    setUploadStatus('Fixing Maria\'s profile image...');
+    
+    try {
+      const response = await fetch('/debug/profile-image/api', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action: 'fix-maria' })
+      });
+      
+      const result = await response.json();
+      
+      setUploadStatus(`Fix Maria result: ${JSON.stringify(result, null, 2)}`);
+      
+      // Refresh everything
+      getProfiles();
+      setRefreshKey(prev => prev + 1);
+      
+    } catch (error: any) {
+      console.error('Error fixing Maria\'s profile:', error);
+      setUploadStatus(`Error: ${error.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+  
   if (!user) {
     return (
       <div className="container py-8">
@@ -253,7 +550,7 @@ export default function ProfileImageDebugPage() {
               <div className="flex items-center gap-4">
                 <ProfileAvatar 
                   key={`avatar-${refreshKey}`}
-                  userId={databaseUserId || user.id}
+                  userId={user.id}
                   firstName={user.user_metadata?.first_name}
                   lastName={user.user_metadata?.last_name}
                   size="lg"
@@ -285,11 +582,55 @@ export default function ProfileImageDebugPage() {
               </Button>
               
               <Button 
+                variant="destructive"
+                onClick={forceClearImageCache}
+                disabled={uploading}
+              >
+                Clear Browser Image Cache
+              </Button>
+              
+              <Button 
                 variant="outline"
                 onClick={forceAllProfileAvatars}
                 disabled={uploading}
               >
                 Force All Profile Avatars
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                onClick={handleCleanupImages}
+                disabled={uploading || !user}
+                className="w-full"
+              >
+                Clean Up Old Profile Images
+              </Button>
+              
+              <Button 
+                variant="destructive" 
+                onClick={handleCleanupAllImages}
+                disabled={uploading}
+                className="w-full"
+              >
+                Clean Up ALL User Images
+              </Button>
+              
+              <Button 
+                variant="secondary"
+                onClick={handleForceCreatePlaceholder}
+                disabled={uploading || !databaseUserId}
+                className="w-full"
+              >
+                Force Create Placeholder Image
+              </Button>
+              
+              <Button 
+                variant="default"
+                onClick={handleFixMariaProfile}
+                disabled={uploading}
+                className="w-full bg-blue-600 hover:bg-blue-700"
+              >
+                Fix Maria's Profile
               </Button>
               
               <input 
@@ -298,6 +639,7 @@ export default function ProfileImageDebugPage() {
                 onChange={handleImageUpload}
                 accept="image/*"
                 className="hidden"
+                aria-label="Upload profile image"
               />
             </div>
             
@@ -339,5 +681,23 @@ export default function ProfileImageDebugPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+// Component with proper Suspense boundary for useSearchParams
+function ProfileImageDebugWithSearchParams() {
+  return (
+    <Suspense fallback={<ProfileImageDebugLoading />}>
+      <SearchParamsHandler />
+    </Suspense>
+  );
+}
+
+// Main export with ClientOnly wrapper
+export default function ProfileImageDebugPage() {
+  return (
+    <ClientOnly fallback={<ProfileImageDebugLoading />}>
+      <ProfileImageDebugWithSearchParams />
+    </ClientOnly>
   );
 } 

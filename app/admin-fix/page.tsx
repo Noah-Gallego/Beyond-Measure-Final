@@ -1,10 +1,22 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useAuth } from "@/components/AuthProvider"
 import { supabase } from "@/utils/supabase"
+import ClientOnly from "@/components/client-only"
 
-export default function AdminFixPage() {
+// Loading fallback component
+function AdminFixLoading() {
+  return (
+    <div className="container mx-auto p-8">
+      <h1 className="text-3xl font-bold mb-6">Admin Fix Tool</h1>
+      <div className="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
+    </div>
+  );
+}
+
+// Inner content component
+function AdminFixInnerContent() {
   const { user, isLoading } = useAuth()
   const [isFixing, setIsFixing] = useState(false)
   const [message, setMessage] = useState("")
@@ -191,5 +203,25 @@ export default function AdminFixPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+// Client component wrapped in Suspense
+function AdminFixContent() {
+  return (
+    <Suspense fallback={<AdminFixLoading />}>
+      <AdminFixInnerContent />
+    </Suspense>
+  )
+}
+
+// Main component with ClientOnly and Suspense
+export default function AdminFixPage() {
+  return (
+    <ClientOnly fallback={<AdminFixLoading />}>
+      <Suspense fallback={<AdminFixLoading />}>
+        <AdminFixContent />
+      </Suspense>
+    </ClientOnly>
   )
 } 

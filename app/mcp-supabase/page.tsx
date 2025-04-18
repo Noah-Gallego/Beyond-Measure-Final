@@ -1,11 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
+import ClientOnly from '@/components/client-only';
 
-export default function McpSupabasePage() {
+// Safe component to handle search params
+function SearchParamsHandler() {
+  // Dynamically import useSearchParams
+  const { useSearchParams } = require('next/navigation');
+  const searchParams = useSearchParams();
+  const initialProjectId = searchParams?.get('project_id') || null;
+  
+  return <McpSupabaseInnerContent initialProjectId={initialProjectId} />;
+}
+
+// Inner content that doesn't directly use useSearchParams
+function McpSupabaseInnerContent({ initialProjectId }: { initialProjectId: string | null }) {
   const [organizations, setOrganizations] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
-  const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  const [selectedProject, setSelectedProject] = useState<string | null>(initialProjectId);
   const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
   const [tables, setTables] = useState<any[]>([]);
   const [migrationName, setMigrationName] = useState('create_initial_tables');
@@ -242,170 +254,156 @@ export default function McpSupabasePage() {
     <div className="container mx-auto py-10 px-4">
       <h1 className="text-3xl font-bold mb-6">MCP Supabase Tools</h1>
       <p className="mb-6 text-gray-600">
-        Use these tools to manage your Supabase projects, check database tables, and create required tables.
+        Management tools for Supabase project setup.
       </p>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-bold mb-4">Organization & Project</h2>
-          
-          <div className="space-y-4">
-            <button
-              onClick={listOrganizations}
-              disabled={loading.listOrgs}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 w-full"
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold mb-3">Organizations</h2>
+        <button
+          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded mr-2"
+          onClick={listOrganizations}
+          disabled={loading.listOrgs}
+        >
+          {loading.listOrgs ? 'Loading...' : 'List Organizations'}
+        </button>
+        
+        {organizations.length > 0 && (
+          <div className="mt-3">
+            <select 
+              className="border p-2 rounded"
+              value={selectedOrg || ''}
+              onChange={(e) => setSelectedOrg(e.target.value)}
             >
-              {loading.listOrgs ? 'Loading...' : 'List Organizations'}
-            </button>
-            
-            {organizations.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Select Organization
-                </label>
-                <select
-                  value={selectedOrg || ''}
-                  onChange={(e) => setSelectedOrg(e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Select an organization</option>
-                  {organizations.map((org) => (
-                    <option key={org.id} value={org.id}>
-                      {org.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+              <option value="">Select an organization</option>
+              {organizations.map((org) => (
+                <option key={org.id} value={org.id}>
+                  {org.name}
+                </option>
+              ))}
+            </select>
             
             <button
+              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded ml-2"
               onClick={handleCreateProject}
               disabled={!selectedOrg || loading.createProject}
-              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 w-full"
             >
               {loading.createProject ? 'Creating...' : 'Create New Project'}
             </button>
-            
-            <button
-              onClick={listProjects}
-              disabled={loading.listProjects}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 w-full"
-            >
-              {loading.listProjects ? 'Loading...' : 'List Projects'}
-            </button>
-            
-            {projects.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Select Project
-                </label>
-                <select
-                  value={selectedProject || ''}
-                  onChange={(e) => setSelectedProject(e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Select a project</option>
-                  {projects.map((project) => (
-                    <option key={project.id} value={project.id}>
-                      {project.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
           </div>
-        </div>
+        )}
+      </div>
+      
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold mb-3">Projects</h2>
+        <button
+          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+          onClick={listProjects}
+          disabled={loading.listProjects}
+        >
+          {loading.listProjects ? 'Loading...' : 'List Projects'}
+        </button>
         
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-bold mb-4">Database Operations</h2>
-          
-          <div className="space-y-4">
+        {projects.length > 0 && (
+          <div className="mt-3">
+            <select 
+              className="border p-2 rounded"
+              value={selectedProject || ''}
+              onChange={(e) => setSelectedProject(e.target.value)}
+            >
+              <option value="">Select a project</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+      
+      {selectedProject && (
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold mb-3">Tables</h2>
+          <div className="flex space-x-2">
             <button
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
               onClick={listTables}
-              disabled={!selectedProject || loading.listTables}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 w-full"
+              disabled={loading.listTables}
             >
               {loading.listTables ? 'Loading...' : 'List Tables'}
             </button>
             
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Migration Name
-              </label>
-              <input
-                type="text"
-                value={migrationName}
-                onChange={(e) => setMigrationName(e.target.value)}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="create_initial_tables"
-              />
-            </div>
-            
             <button
+              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
               onClick={createTables}
-              disabled={!selectedProject || loading.createTables}
-              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 w-full"
+              disabled={loading.createTables}
             >
               {loading.createTables ? 'Creating...' : 'Create Tables'}
             </button>
           </div>
-        </div>
-      </div>
-      
-      {/* Logs */}
-      <div className="mt-6 mb-6 p-4 bg-gray-100 rounded max-h-60 overflow-y-auto">
-        <h2 className="text-lg font-semibold mb-2">Logs</h2>
-        {logs.length === 0 ? (
-          <p className="text-gray-500">No operations performed yet</p>
-        ) : (
-          <ul className="space-y-1">
-            {logs.map((log, i) => (
-              <li key={i} className="text-sm font-mono">{log}</li>
-            ))}
-          </ul>
-        )}
-      </div>
-      
-      {/* Table List */}
-      {tables.length > 0 && (
-        <div className="mt-6">
-          <h2 className="text-xl font-bold mb-2">Tables</h2>
-          <div className="bg-white shadow overflow-hidden rounded-md">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Schema</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Table</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {tables.map((table, i) => (
-                  <tr key={i}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {table.schema}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {table.name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {table.type || 'table'}
-                    </td>
-                  </tr>
+          
+          {tables.length > 0 && (
+            <div className="mt-4 bg-gray-100 p-4 rounded">
+              <h3 className="font-semibold mb-2">Existing Tables</h3>
+              <ul className="list-disc pl-5">
+                {tables.map((table, index) => (
+                  <li key={index}>{table.schema}.{table.name}</li>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </ul>
+            </div>
+          )}
         </div>
       )}
       
-      <div className="mt-10 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-        <h2 className="text-lg font-semibold mb-2">Important Note</h2>
-        <p>
-          This page uses the MCP Supabase tools. For these tools to work, you need to have the appropriate API routes set up 
-          at <code>/api/supabase/*</code> that forward requests to the MCP Supabase functions.
-        </p>
+      <div className="mt-8">
+        <h2 className="text-xl font-semibold mb-3">Logs</h2>
+        <div className="bg-black text-green-400 p-4 rounded h-60 overflow-y-auto font-mono text-sm">
+          {logs.length === 0 ? (
+            <p>No logs yet. Use the buttons above to perform actions.</p>
+          ) : (
+            logs.map((log, index) => <div key={index}>{log}</div>)
+          )}
+        </div>
       </div>
     </div>
+  );
+}
+
+// Loading component for Suspense
+function McpSupabaseLoading() {
+  return (
+    <div className="container mx-auto py-10 px-4">
+      <h1 className="text-3xl font-bold mb-6">MCP Supabase Tools</h1>
+      <div className="animate-pulse">
+        <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+        <div className="h-4 bg-gray-200 rounded w-1/2 mb-8"></div>
+        
+        <div className="space-y-4">
+          <div className="h-10 bg-gray-200 rounded w-40"></div>
+          <div className="h-10 bg-gray-200 rounded w-40"></div>
+          <div className="h-10 bg-gray-200 rounded w-40"></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Content component with proper Suspense boundary
+function McpSupabaseContent() {
+  return (
+    <Suspense fallback={<McpSupabaseLoading />}>
+      <SearchParamsHandler />
+    </Suspense>
+  );
+}
+
+// Main component with ClientOnly and Suspense
+export default function McpSupabasePage() {
+  return (
+    <ClientOnly fallback={<McpSupabaseLoading />}>
+      <Suspense fallback={<McpSupabaseLoading />}>
+        <McpSupabaseContent />
+      </Suspense>
+    </ClientOnly>
   );
 } 

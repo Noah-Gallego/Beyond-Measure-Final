@@ -2,9 +2,13 @@
 
 import { useState } from 'react';
 import { supabase } from '../utils/supabase';
+import { Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import DeleteProjectModal from './DeleteProjectModal';
 
 interface ProjectActionsProps {
   projectId: string;
+  projectTitle: string;  // Add project title for the confirmation modal
   currentStatus: string;
   isTeacher?: boolean;
   isAdmin?: boolean;
@@ -14,6 +18,7 @@ interface ProjectActionsProps {
 
 export default function ProjectActions({ 
   projectId, 
+  projectTitle,
   currentStatus, 
   isTeacher = false, 
   isAdmin = false, 
@@ -22,6 +27,9 @@ export default function ProjectActions({
 }: ProjectActionsProps) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const router = useRouter();
 
   const submitForReview = async () => {
     if (currentStatus !== 'draft') {
@@ -52,6 +60,57 @@ export default function ProjectActions({
       setMessage('An error occurred while submitting the project.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // New function to open the delete modal
+  const openDeleteModal = () => {
+    setShowDeleteModal(true);
+  };
+
+  // New function to delete a project
+  const deleteProject = async () => {
+    try {
+      setIsDeleting(true);
+      console.log('Deleting project with ID:', projectId);
+      
+      // Call the API endpoint
+      const response = await fetch('/api/delete-project', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ projectId }),
+      });
+      
+      console.log('Delete API response status:', response.status);
+      const result = await response.json();
+      console.log('Delete API response body:', result);
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete project');
+      }
+      
+      console.log('Project deleted successfully');
+      setMessage('Project successfully deleted!');
+      
+      // Close the modal
+      setShowDeleteModal(false);
+      
+      // Run callback immediately
+      if (onProjectUpdated) {
+        onProjectUpdated();
+      }
+      
+      // Redirect to projects list immediately - no delay
+      router.push('/teacher/projects');
+      router.refresh();
+    } catch (error: any) {
+      console.error('Error deleting project:', error);
+      setMessage(`Error: ${error.message}`);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -104,58 +163,93 @@ export default function ProjectActions({
   };
 
   const getActionButton = () => {
-    // Only show action buttons for teachers
+    // Only show action buttons for teachers or admins
     if (!isTeacher && !isAdmin) return null;
 
     const btnClass = buttonVariant === 'small' 
       ? "px-3 py-1.5 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-offset-1"
       : "px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2";
       
+    // For draft projects, show Submit button
     if (currentStatus === 'draft' && isTeacher) {
       return (
-        <button
-          className={`${btnClass} bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500`}
-          onClick={submitForReview}
-          disabled={loading}
-        >
-          {loading ? 'Submitting...' : 'Submit for Review'}
-        </button>
+        <div className="flex space-x-2">
+          <button
+            className={`${btnClass} bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500`}
+            onClick={submitForReview}
+            disabled={loading}
+          >
+            {loading ? 'Submitting...' : 'Submit for Review'}
+          </button>
+          
+          <button
+            className={`${btnClass} bg-red-600 text-white hover:bg-red-700 focus:ring-red-500`}
+            onClick={openDeleteModal}
+            disabled={isDeleting}
+          >
+            {buttonVariant === 'small' ? <Trash2 className="h-4 w-4" /> : 'Delete'}
+          </button>
+        </div>
       );
     }
     
+    // For rejected projects, show Edit and Resubmit button
     if ((currentStatus === 'denied' || currentStatus === 'rejected') && isTeacher) {
       return (
-        <button
-          className={`${btnClass} bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500`}
-          onClick={async () => {
-            setLoading(true);
-            try {
-              const { data, error } = await supabase
-                .from('projects')
-                .update({ status: 'draft' })
-                .eq('id', projectId);
+        <div className="flex space-x-2">
+          <button
+            className={`${btnClass} bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500`}
+            onClick={async () => {
+              setLoading(true);
+              try {
+                const { data, error } = await supabase
+                  .from('projects')
+                  .update({ status: 'draft' })
+                  .eq('id', projectId);
+                  
+                if (error) {
+                  console.error('Error updating project status:', error);
+                  setMessage(`Error: ${error.message}`);
+                  return;
+                }
                 
-              if (error) {
-                console.error('Error updating project status:', error);
-                setMessage(`Error: ${error.message}`);
-                return;
+                if (onProjectUpdated) {
+                  onProjectUpdated();
+                }
+                
+                setMessage('Project returned to draft status for editing.');
+              } catch (error) {
+                console.error('Error reverting project:', error);
+                setMessage('An error occurred while updating the project.');
+              } finally {
+                setLoading(false);
               }
-              
-              if (onProjectUpdated) {
-                onProjectUpdated();
-              }
-              
-              setMessage('Project returned to draft status for editing.');
-            } catch (error) {
-              console.error('Error reverting project:', error);
-              setMessage('An error occurred while updating the project.');
-            } finally {
-              setLoading(false);
-            }
-          }}
-          disabled={loading}
+            }}
+            disabled={loading}
+          >
+            Edit and Resubmit
+          </button>
+          
+          <button
+            className={`${btnClass} bg-red-600 text-white hover:bg-red-700 focus:ring-red-500`}
+            onClick={openDeleteModal}
+            disabled={isDeleting}
+          >
+            {buttonVariant === 'small' ? <Trash2 className="h-4 w-4" /> : 'Delete'}
+          </button>
+        </div>
+      );
+    }
+    
+    // For other statuses, only admins or teacher owners can delete
+    if ((isTeacher || isAdmin) && ['pending_review', 'approved', 'active', 'needs_revision', 'draft', 'denied', 'rejected'].includes(currentStatus)) {
+      return (
+        <button
+          className={`${btnClass} bg-red-600 text-white hover:bg-red-700 focus:ring-red-500`}
+          onClick={openDeleteModal}
+          disabled={isDeleting}
         >
-          Edit and Resubmit
+          {buttonVariant === 'small' ? <Trash2 className="h-4 w-4" /> : 'Delete'}
         </button>
       );
     }
@@ -172,6 +266,15 @@ export default function ProjectActions({
             {message}
           </div>
         )}
+        
+        {/* Delete Modal */}
+        <DeleteProjectModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={deleteProject}
+          projectTitle={projectTitle}
+          isDeleting={isDeleting}
+        />
       </>
     );
   }
@@ -208,6 +311,15 @@ export default function ProjectActions({
           </p>
         </div>
       )}
+      
+      {/* Delete Modal */}
+      <DeleteProjectModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={deleteProject}
+        projectTitle={projectTitle}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 } 

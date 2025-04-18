@@ -24,14 +24,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Initial session check
     const getInitialSession = async () => {
       try {
-        const { data } = await supabase.auth.getSession();
+        // Add a timeout for the initial session check
+        const sessionPromise = supabase.auth.getSession();
+        
+        // Create a timeout promise
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => {
+            reject(new Error('Session check timed out'));
+          }, 5000); // 5 seconds timeout
+        });
+        
+        // Race between the session check and the timeout
+        const { data } = await Promise.race([
+          sessionPromise,
+          timeoutPromise,
+        ]) as any;
         
         if (isMounted) {
-          setSession(data.session);
-          setUser(data.session?.user ?? null);
+          setSession(data?.session);
+          setUser(data?.session?.user ?? null);
+          console.log("Auth session check complete:", !!data?.session);
         }
       } catch (error) {
         console.error('Error checking auth session:', error);
+        // Reset loading state even on error
+        if (isMounted) {
+          setIsLoading(false);
+        }
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -41,23 +60,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     getInitialSession();
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (isMounted) {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setIsLoading(false);
-      }
-    });
+    // Listen for auth changes with error handling
+    try {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (isMounted) {
+          console.log("Auth state changed:", !!session);
+          setSession(session);
+          setUser(session?.user ?? null);
+          setIsLoading(false);
+        }
+      });
 
-    return () => {
-      isMounted = false;
-      subscription.unsubscribe();
-    };
+      return () => {
+        isMounted = false;
+        subscription?.unsubscribe();
+      };
+    } catch (error) {
+      console.error('Error setting up auth listener:', error);
+      setIsLoading(false);
+      return () => {
+        isMounted = false;
+      };
+    }
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+      
+      // Redirect to home page after sign out
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
 
   const value = {

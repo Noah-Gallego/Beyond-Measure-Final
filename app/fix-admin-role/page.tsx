@@ -1,13 +1,26 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useAuth } from "@/components/AuthProvider"
 import { supabase } from "@/utils/supabase"
 import { useRouter } from "next/navigation"
 
-export default function FixAdminRolePage() {
+// Loading fallback component
+function FixAdminRoleLoading() {
+  return (
+    <div className="container mx-auto p-8">
+      <h1 className="text-2xl font-bold mb-4">Loading...</h1>
+    </div>
+  );
+}
+
+// Content component that will be wrapped in Suspense
+function FixAdminRoleInnerContent() {
   const { user, isLoading } = useAuth()
   const router = useRouter()
+  // Dynamically import useSearchParams to ensure proper Suspense handling
+  const nextNavigation = require('next/navigation');
+  const searchParams = nextNavigation.useSearchParams()
   const [databaseUserData, setDatabaseUserData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [isUpdating, setIsUpdating] = useState(false)
@@ -169,5 +182,23 @@ export default function FixAdminRolePage() {
         </p>
       </div>
     </div>
+  )
+}
+
+// Wrapper component with its own Suspense boundary
+function FixAdminRoleContent() {
+  return (
+    <Suspense fallback={<FixAdminRoleLoading />}>
+      <FixAdminRoleInnerContent />
+    </Suspense>
+  );
+}
+
+// Main component with Suspense boundary
+export default function FixAdminRolePage() {
+  return (
+    <Suspense fallback={<FixAdminRoleLoading />}>
+      <FixAdminRoleContent />
+    </Suspense>
   )
 } 

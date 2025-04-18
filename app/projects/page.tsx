@@ -1,22 +1,27 @@
-"use client"
+import { redirect } from 'next/navigation';
 
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
-
+// Use Next.js redirects for better performance
 export default function ProjectsRedirectPage() {
-  const router = useRouter()
-  
-  useEffect(() => {
-    // Redirect to the new teacher projects page
-    router.replace("/teacher/projects")
-  }, [router])
+  // Server-side redirect
+  redirect('/teacher/projects');
+}
 
-  return (
-    <div className="container mx-auto py-10 flex items-center justify-center h-[50vh]">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold mb-4">Redirecting...</h1>
-        <p>Please wait while we redirect you to the updated projects page.</p>
-      </div>
-    </div>
-  )
+// Add metadata
+export function generateMetadata() {
+  return {
+    title: 'Projects - Beyond Measure',
+    // This adds a redirect header for SEO
+    alternates: {
+      canonical: '/teacher/projects',
+    },
+  }
+}
+
+// Static optimization
+export const dynamic = 'force-static';
+export const dynamicParams = false;
+
+// Redirect to the teacher projects page
+export async function generateStaticParams() {
+  return [];
 } 

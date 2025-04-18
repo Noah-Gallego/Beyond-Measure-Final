@@ -1,13 +1,50 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { useAuth } from '@/components/AuthProvider';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import ClientOnly from '@/components/client-only';
 
-export default function SetupDemoPage() {
+// LoadingFallback component
+function LoadingFallback() {
+  return (
+    <div className="container mx-auto py-10 px-4">
+      <div className="h-8 w-64 bg-gray-200 rounded-md animate-pulse mb-6"></div>
+      <div className="h-4 w-full max-w-2xl bg-gray-100 rounded-md animate-pulse mb-10"></div>
+      
+      <Card className="mb-8">
+        <CardHeader>
+          <div className="h-6 w-48 bg-gray-200 rounded-md animate-pulse"></div>
+        </CardHeader>
+        <CardContent>
+          <div className="h-4 w-full bg-gray-100 rounded-md animate-pulse mb-2"></div>
+          <div className="h-4 w-4/5 bg-gray-100 rounded-md animate-pulse mb-2"></div>
+          <div className="h-4 w-5/6 bg-gray-100 rounded-md animate-pulse"></div>
+        </CardContent>
+        <CardFooter className="flex justify-between">
+          <div className="h-10 w-40 bg-gray-200 rounded-md animate-pulse"></div>
+          <div className="h-10 w-40 bg-gray-200 rounded-md animate-pulse"></div>
+        </CardFooter>
+      </Card>
+    </div>
+  );
+}
+
+// This component safely uses useSearchParams
+function SearchParamsHandler() {
+  // Import dynamically to ensure it's only used within a component wrapped in Suspense
+  const nextNavigation = require('next/navigation');
+  const searchParams = nextNavigation.useSearchParams();
+  const source = searchParams?.get('source') || '';
+  
+  return <SetupDemoInnerContent source={source} />;
+}
+
+// Deep inner content that doesn't directly use useSearchParams
+function SetupDemoInnerContent({ source }: { source: string }) {
   const { user, isLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -46,6 +83,15 @@ export default function SetupDemoPage() {
     }
   };
 
+  // Function to navigate to contact form with prefilled fields
+  const goToContactForm = () => {
+    // Get user email from auth if available
+    const userEmail = user?.email || '';
+    
+    // Navigate to contact page with prefilled fields
+    router.push(`/#contact?subject=${encodeURIComponent('Request for Demo')}&email=${encodeURIComponent(userEmail)}&message=${encodeURIComponent('I would like to schedule a personalized demo of Beyond Measure for my school/district.')}`);
+  };
+
   if (isLoading) {
     return (
       <div className="container mx-auto py-10 flex items-center justify-center">
@@ -63,10 +109,14 @@ export default function SetupDemoPage() {
           </CardHeader>
           <CardContent>
             <p className="mb-4">You need to be logged in to create a demo project.</p>
+            <p className="mb-4">If you prefer to see a demo first, you can request one by contacting us.</p>
           </CardContent>
-          <CardFooter>
+          <CardFooter className="flex justify-between">
             <Link href="/auth">
               <Button>Sign In</Button>
+            </Link>
+            <Link href="/#contact?source=contact">
+              <Button variant="outline">Request a Demo</Button>
             </Link>
           </CardFooter>
         </Card>
@@ -91,6 +141,9 @@ export default function SetupDemoPage() {
             Click the button below to create a sample project in your teacher account.
             This will ensure that all required database tables exist and populate them with sample data.
           </p>
+          <p className="mb-4">
+            If you'd prefer a guided tour of the platform, you can also schedule a personalized demo with our team.
+          </p>
         </CardContent>
         <CardFooter className="flex justify-between">
           <Button
@@ -100,9 +153,14 @@ export default function SetupDemoPage() {
           >
             {loading ? 'Creating...' : 'Create Demo Project'}
           </Button>
-          <Link href="/teacher/dashboard">
-            <Button variant="outline">Go to Dashboard</Button>
-          </Link>
+          <div className="space-x-3">
+            <Link href="/#contact?source=contact">
+              <Button variant="outline">Request Guided Demo</Button>
+            </Link>
+            <Link href="/teacher/dashboard">
+              <Button variant="outline">Go to Dashboard</Button>
+            </Link>
+          </div>
         </CardFooter>
       </Card>
 
@@ -141,4 +199,24 @@ export default function SetupDemoPage() {
       )}
     </div>
   );
+}
+
+// Component with proper Suspense for the search params handler
+function SetupDemoContentWithSearchParams() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <SearchParamsHandler />
+    </Suspense>
+  );
+}
+
+// Main component with ClientOnly wrapper first
+export default function SetupDemoPage() {
+  return (
+    <ClientOnly fallback={<LoadingFallback />}>
+      <Suspense fallback={<LoadingFallback />}>
+        <SetupDemoContentWithSearchParams />
+      </Suspense>
+    </ClientOnly>
+  )
 } 

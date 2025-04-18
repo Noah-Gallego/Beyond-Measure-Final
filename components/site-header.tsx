@@ -6,11 +6,12 @@ import Image from "next/image"
 import { MobileNav } from "@/components/mobile-nav"
 import { LoginDialog } from "@/components/auth/login-dialog"
 import { UserDropdown } from "@/components/user-dropdown"
-import { LogIn, ChevronDown } from "lucide-react"
+import { LogIn, ChevronDown, Search } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/components/AuthProvider"
 import { getDashboardUrlByRole, formatUserName } from "@/utils/auth-helpers"
 import { usePathname } from "next/navigation"
+import SearchProjects from "@/components/SearchProjects"
 
 export function SiteHeader() {
   const [isScrolled, setIsScrolled] = useState(false)
@@ -182,6 +183,18 @@ export function SiteHeader() {
                 showNavigation ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-10 pointer-events-none"
               }`}
             >
+              {/* Search Projects Button - Always visible */}
+              <Link
+                href="/search"
+                className={cn(
+                  "inline-flex items-center justify-center whitespace-nowrap rounded-full text-sm font-medium transition-colors px-4 py-2",
+                  pathname === "/search" ? navButtonStyles.active : navButtonStyles.inactive,
+                )}
+              >
+                <Search className="mr-1 h-4 w-4" />
+                Find Projects
+              </Link>
+              
               {sections
                 .filter((section) => section.id !== "hero" && section.id !== "about") // Filter out Home and About Us buttons
                 .map((section) => {
@@ -210,6 +223,11 @@ export function SiteHeader() {
           </div>
 
           <div className="ml-auto flex items-center justify-end space-x-4">
+            {/* Search icon in navbar - show on all pages */}
+            <div className="hidden md:block">
+              <SearchProjects variant="nav" />
+            </div>
+            
             {/* Admin Navigation Menu */}
             {!isLoading && userRole === 'admin' && (
               <div className="relative hidden md:block">

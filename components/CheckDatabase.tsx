@@ -1,9 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { supabase } from '../utils/supabase';
+import * as nextNavigation from 'next/navigation';
 
-export default function CheckDatabase() {
+// Loading fallback for database check
+function DatabaseCheckLoading() {
+  return (
+    <div className="flex justify-center items-center py-10">
+      <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+    </div>
+  );
+}
+
+// Main component content that safely handles useSearchParams
+function CheckDatabaseContent() {
+  // Dynamically import useSearchParams to ensure proper Suspense handling
+  const searchParams = nextNavigation.useSearchParams();
+  
   const [loading, setLoading] = useState(true);
   const [teacherProfiles, setTeacherProfiles] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
@@ -14,7 +28,7 @@ export default function CheckDatabase() {
   useEffect(() => {
     async function checkDatabase() {
       setLoading(true);
-      setResults([...results, "Checking database connection..."]);
+      setResults(prev => [...prev, "Checking database connection..."]);
       
       try {
         // Simple approach - just try to select from each table
@@ -33,7 +47,7 @@ export default function CheckDatabase() {
               exists: !error
             });
             
-            setResults([...results, `Table ${table}: ${error ? 'Not found or error' : 'Exists'}`]);
+            setResults(prev => [...prev, `Table ${table}: ${error ? 'Not found or error' : 'Exists'}`]);
             
             // If the table exists, try to fetch all records
             if (!error) {
@@ -50,14 +64,14 @@ export default function CheckDatabase() {
               name: table,
               exists: false
             });
-            setResults([...results, `Error checking table ${table}: ${e instanceof Error ? e.message : String(e)}`]);
+            setResults(prev => [...prev, `Error checking table ${table}: ${e instanceof Error ? e.message : String(e)}`]);
           }
         }
         
         setTables(tableStatus);
       } catch (e) {
         setError(`Database connection error: ${e instanceof Error ? e.message : String(e)}`);
-        setResults([...results, `Error: ${e instanceof Error ? e.message : String(e)}`]);
+        setResults(prev => [...prev, `Error: ${e instanceof Error ? e.message : String(e)}`]);
       } finally {
         setLoading(false);
       }
@@ -67,14 +81,14 @@ export default function CheckDatabase() {
   }, []);
 
   const createTables = async () => {
-    setResults([...results, "Creating tables..."]);
+    setResults(prev => [...prev, "Creating tables..."]);
     
     try {
       // Create teacher profiles table
       const { error: teacherError } = await supabase.rpc('create_teacher_profiles_table', {});
       
       if (teacherError) {
-        setResults([...results, `Error creating teacher_profiles: ${teacherError.message}`]);
+        setResults(prev => [...prev, `Error creating teacher_profiles: ${teacherError.message}`]);
         
         // Try direct SQL as fallback (if user has permission)
         const createTeacherProfilesSQL = `
@@ -92,17 +106,17 @@ export default function CheckDatabase() {
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
           );
         `;
-        setResults([...results, "Please run this SQL in Supabase SQL Editor:"]);
-        setResults([...results, createTeacherProfilesSQL]);
+        setResults(prev => [...prev, "Please run this SQL in Supabase SQL Editor:"]);
+        setResults(prev => [...prev, createTeacherProfilesSQL]);
       } else {
-        setResults([...results, "Teacher profiles table created successfully!"]);
+        setResults(prev => [...prev, "Teacher profiles table created successfully!"]);
       }
       
       // Create projects table
       const { error: projectsError } = await supabase.rpc('create_projects_table', {});
       
       if (projectsError) {
-        setResults([...results, `Error creating projects: ${projectsError.message}`]);
+        setResults(prev => [...prev, `Error creating projects: ${projectsError.message}`]);
         
         // Try direct SQL as fallback (if user has permission)
         const createProjectsSQL = `
@@ -120,16 +134,16 @@ export default function CheckDatabase() {
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
           );
         `;
-        setResults([...results, "Please run this SQL in Supabase SQL Editor:"]);
-        setResults([...results, createProjectsSQL]);
+        setResults(prev => [...prev, "Please run this SQL in Supabase SQL Editor:"]);
+        setResults(prev => [...prev, createProjectsSQL]);
       } else {
-        setResults([...results, "Projects table created successfully!"]);
+        setResults(prev => [...prev, "Projects table created successfully!"]);
       }
       
       // Reload to check if tables were created
       window.location.reload();
     } catch (e) {
-      setResults([...results, `Error creating tables: ${e instanceof Error ? e.message : String(e)}`]);
+      setResults(prev => [...prev, `Error creating tables: ${e instanceof Error ? e.message : String(e)}`]);
     }
   };
 
@@ -229,5 +243,14 @@ export default function CheckDatabase() {
         </>
       )}
     </div>
+  );
+}
+
+// Export the component with a proper Suspense boundary
+export default function CheckDatabase() {
+  return (
+    <Suspense fallback={<DatabaseCheckLoading />}>
+      <CheckDatabaseContent />
+    </Suspense>
   );
 } 

@@ -1,126 +1,118 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { supabase } from '@/utils/supabase';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
-import ProjectsList from '@/components/ProjectsList';
-import SearchProjects from '@/components/SearchProjects';
-import SearchFilters from '@/components/SearchFilters';
-import { Button } from '@/components/ui/button';
+import SearchWrapper from '@/components/SearchWrapper';
+import SearchFilterWrapper from '@/components/SearchFilterWrapper';
 import { ChevronRight, Home, Search as SearchIcon } from 'lucide-react';
+import ProjectsList from '@/components/ProjectsList';
+import ClientOnly from '@/components/client-only';
+import dynamic from 'next/dynamic';
 
-// Split the component to add Suspense boundary
-function SearchPageContent() {
-  const searchParams = useSearchParams();
-  const query = searchParams.get('q') || '';
-  const category = searchParams.get('category') || 'all';
-  const minFunding = searchParams.get('minFunding') || '0';
-  const maxFunding = searchParams.get('maxFunding') || '50000';
-  const [categoryName, setCategoryName] = useState('All Categories');
-  
-  // Log the parameters for debugging
-  useEffect(() => {
-    console.log('SearchPage params:', { 
-      category, 
-      minFunding, 
-      maxFunding 
-    });
-  }, [category, minFunding, maxFunding]);
-  
-  // Fetch category name if needed
-  useEffect(() => {
-    const fetchCategoryName = async () => {
-      if (category && category !== 'all') {
-        try {
-          const { data, error } = await supabase
-            .from('categories')
-            .select('name')
-            .eq('id', category)
-            .single();
-            
-          if (error) {
-            console.error('Error fetching category:', error);
-            return;
-          }
-          
-          if (data) {
-            console.log('Found category name:', data.name, 'for id:', category);
-            setCategoryName(data.name);
-          }
-        } catch (error) {
-          console.error('Error:', error);
-        }
-      } else {
-        setCategoryName('All Categories');
-      }
-    };
-    
-    fetchCategoryName();
-  }, [category]);
+// A safe inner component that doesn't directly use useSearchParams
+function ProjectListingContent({ 
+  query, 
+  category, 
+  minFunding, 
+  maxFunding 
+}: { 
+  query: string, 
+  category: string, 
+  minFunding: number, 
+  maxFunding: number 
+}) {
+  return (
+    <ProjectsList 
+      searchQuery={query} 
+      categoryFilter={category}
+      minFunding={minFunding} 
+      maxFunding={maxFunding}
+    />
+  );
+}
 
+// Component that safely uses useSearchParams - must be wrapped in Suspense
+function ParamsToProjectsList() {
+  // Import useSearchParams dynamically to ensure proper Suspense handling
+  const nextNavigation = require('next/navigation');
+  const searchParams = nextNavigation.useSearchParams();
+  
+  const query = searchParams?.get('q') || '';
+  const category = searchParams?.get('category') || 'all';
+  const minFunding = parseInt(searchParams?.get('minFunding') || '0');
+  const maxFunding = parseInt(searchParams?.get('maxFunding') || '50000');
+  
+  return (
+    <ProjectListingContent 
+      query={query} 
+      category={category} 
+      minFunding={minFunding} 
+      maxFunding={maxFunding} 
+    />
+  );
+}
+
+// Loading fallback component
+function SearchPageLoading() {
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Breadcrumb */}
       <nav className="flex items-center space-x-4 mb-6">
-        <Link 
-          href="/" 
-          className="flex items-center text-gray-600 hover:text-navy transition-colors"
-        >
-          <Home className="h-4 w-4 mr-1" />
-          <span>Home</span>
-        </Link>
-        <ChevronRight className="h-4 w-4 text-gray-400" />
-        <span className="flex items-center text-navy font-medium">
-          <SearchIcon className="h-4 w-4 mr-1" />
-          Search
-        </span>
+        <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-4 w-4 text-gray-400">›</div>
+        <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
       </nav>
       
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/* Sidebar Filters - Hidden on mobile, always visible on desktop */}
         <div className="hidden md:block">
-          <SearchFilters />
+          <div className="bg-white rounded-xl shadow-md p-6 h-96 animate-pulse"></div>
         </div>
         
-        {/* Main Content */}
         <div className="md:col-span-3">
-          {/* Search Header */}
           <div className="bg-white rounded-xl shadow-md p-6 mb-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <h1 className="text-2xl font-bold text-navy">
-                {query ? `Results for "${query}"` : "All Projects"}
-              </h1>
-              
-              {/* Simple Search Bar - No Filters */}
-              <div className="w-full md:w-64">
-                <SearchProjects variant="compact" className="shadow-none" />
-              </div>
+              <div className="h-8 w-48 bg-gray-200 rounded animate-pulse"></div>
+              <div className="w-full md:w-64 h-10 bg-gray-200 rounded animate-pulse"></div>
             </div>
           </div>
           
-          {/* Projects List */}
-          <ProjectsList 
-            searchQuery={query} 
-            categoryFilter={category}
-            minFunding={parseInt(minFunding)} 
-            maxFunding={parseInt(maxFunding)}
-          />
+          <div className="space-y-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-white rounded-xl shadow-md h-64 animate-pulse"></div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-// Main component with Suspense boundary
+// Dynamically import the content component to handle useSearchParams properly
+const SearchContent = dynamic(
+  () => import('@/components/search/SearchContent'),
+  { 
+    ssr: false,
+    loading: () => <SearchPageLoading />
+  }
+);
+
+// Main export with proper client-side handling
 export default function SearchPage() {
+  // Ensure it's mounted before rendering
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
+  if (!mounted) {
+    return <SearchPageLoading />;
+  }
+  
   return (
-    <Suspense fallback={
-      <div className="container mx-auto px-4 py-8 flex justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
-      </div>
-    }>
-      <SearchPageContent />
-    </Suspense>
+    <ClientOnly fallback={<SearchPageLoading />}>
+      <Suspense fallback={<SearchPageLoading />}>
+        <SearchContent />
+      </Suspense>
+    </ClientOnly>
   );
 } 

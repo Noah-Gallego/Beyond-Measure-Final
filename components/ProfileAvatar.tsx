@@ -13,6 +13,33 @@ interface ProfileAvatarProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
+// Add this function to check if an ID is a teacher profile ID and get the user ID
+async function getUserIdFromTeacherProfileId(profileId: string): Promise<string | null> {
+  console.log(`Checking if ID ${profileId} is a teacher profile ID`);
+  try {
+    const { data, error } = await supabase
+      .from('teacher_profiles')
+      .select('user_id')
+      .eq('id', profileId)
+      .single();
+      
+    if (error) {
+      console.warn('Error checking teacher profile:', error);
+      return null;
+    }
+    
+    if (data && data.user_id) {
+      console.log(`Found user_id ${data.user_id} for teacher profile ${profileId}`);
+      return data.user_id;
+    }
+    
+    return null;
+  } catch (err) {
+    console.error('Error checking teacher profile ID:', err);
+    return null;
+  }
+}
+
 /**
  * ProfileAvatar component that handles fetching profile images with fallbacks
  */
@@ -25,19 +52,20 @@ export default function ProfileAvatar({
   fallbackClassName = '',
   size = 'md'
 }: ProfileAvatarProps) {
-  // HARDCODED FIX: Direct reference to known working image for Maria
-  const MARIA_AUTH_ID = '89e55400-0f0e-4a27-91f1-f746d31dcf81';
-  const MARIA_DB_ID = '36a202aa-0670-4225-8507-163fde64890f';
-  const MARIA_IMAGE_URL = 'https://efneocmdolkzdfhtqkpl.supabase.co/storage/v1/object/public/profile_images/89e55400-0f0e-4a27-91f1-f746d31dcf81/profile.gif';
-  
-  const isMaria = userId === MARIA_AUTH_ID || userId === MARIA_DB_ID || 
-                  firstName.toLowerCase().includes('maria') || 
-                  (firstName.toLowerCase().includes('m') && lastName.toLowerCase().includes('r'));
-  
-  const [imgSrc, setImgSrc] = useState<string | null>(isMaria ? MARIA_IMAGE_URL : null);
+  const [imgSrc, setImgSrc] = useState<string | null>(imageUrl || null);
   const [imgError, setImgError] = useState(false);
-  const [loading, setLoading] = useState(!isMaria); // Not loading for Maria since we have direct URL
+  const [loading, setLoading] = useState(!imageUrl); // Not loading if we have direct URL
   const [actualUserId, setActualUserId] = useState<string>(userId);
+  const [refreshTimestamp, setRefreshTimestamp] = useState(Date.now());
+  
+  // Periodically update the timestamp to force image refresh
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRefreshTimestamp(Date.now());
+    }, 30000); // Refresh every 30 seconds
+    
+    return () => clearInterval(interval);
+  }, []);
   
   // Calculate size classes
   const sizeClasses = {
@@ -49,96 +77,110 @@ export default function ProfileAvatar({
   
   const avatarClass = `${sizeClasses[size]} ${className}`;
   
-  // Check if we need to convert auth ID to database user ID
+  // Handle direct image URLs immediately
   useEffect(() => {
-    // Direct override for Maria
-    if (isMaria) {
-      console.log('ProfileAvatar: Using direct image URL for Maria');
-      setImgSrc(MARIA_IMAGE_URL);
-      setActualUserId(MARIA_DB_ID);
+    if (imageUrl) {
+      setImgSrc(imageUrl);
       setLoading(false);
-      return;
+      setImgError(false);
     }
+  }, [imageUrl]);
+  
+  // Identify the proper user ID to use for image fetching
+  useEffect(() => {
+    // Skip if we already have an image URL provided
+    if (imageUrl) return;
     
-    if (userId && userId.includes('-') && userId.length > 30) {
-      const checkUserId = async () => {
-        try {
-          // Try to get the database user ID
-          const dbUserId = await getDbUserIdFromAuthId(userId);
+    const checkUserId = async () => {
+      try {
+        // First check if this is a teacher profile ID
+        const teacherUserId = await getUserIdFromTeacherProfileId(userId);
+        if (teacherUserId) {
+          console.log(`ProfileAvatar: Found user_id ${teacherUserId} for teacher profile ${userId}`);
           
-          if (dbUserId) {
-            console.log(`ProfileAvatar: Using database user ID ${dbUserId} instead of auth ID ${userId}`);
-            setActualUserId(dbUserId);
-          } else {
-            // Hard-coded fallback for known user
-            if (userId === MARIA_AUTH_ID) {
-              console.log(`ProfileAvatar: Using hardcoded database ID ${MARIA_DB_ID} for auth ID ${userId}`);
-              setActualUserId(MARIA_DB_ID);
-              setImgSrc(MARIA_IMAGE_URL);
+          // Now get the auth_id for this user
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('auth_id, profile_image_url')
+            .eq('id', teacherUserId)
+            .maybeSingle();
+            
+          if (!userError && userData && userData.auth_id) {
+            console.log(`ProfileAvatar: Found auth_id ${userData.auth_id} for user ${teacherUserId}`);
+            setActualUserId(userData.auth_id); // Use auth_id for storage path
+            
+            if (userData.profile_image_url) {
+              setImgSrc(userData.profile_image_url);
               setLoading(false);
-            } else {
-              console.log(`ProfileAvatar: Could not find database ID for auth ID ${userId}, using as-is`);
+              return;
             }
+          } else {
+            // No auth_id found, just use the user_id from teacher profile
+            setActualUserId(teacherUserId);
           }
-        } catch (err) {
-          console.error('Error in ProfileAvatar ID conversion:', err);
+        } 
+        // If it's not a teacher profile ID, check if it's an auth ID
+        else if (userId.includes('-') && userId.length > 30) {
+          // This is likely an auth ID already
+          setActualUserId(userId);
         }
-      };
-      
-      checkUserId();
-    } else {
-      setActualUserId(userId);
-    }
-  }, [userId, isMaria]);
+        // Otherwise it might be a direct user ID, check for auth_id
+        else {
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('auth_id, profile_image_url')
+            .eq('id', userId)
+            .maybeSingle();
+            
+          if (!userError && userData && userData.auth_id) {
+            console.log(`ProfileAvatar: Found auth_id ${userData.auth_id} for user ${userId}`);
+            setActualUserId(userData.auth_id); // Use auth_id for storage path
+            
+            if (userData.profile_image_url) {
+              setImgSrc(userData.profile_image_url);
+              setLoading(false);
+              return;
+            }
+          } else {
+            // No auth_id found, just use the user_id
+            setActualUserId(userId);
+          }
+        }
+      } catch (err) {
+        console.error('Error in ProfileAvatar ID conversion:', err);
+        setActualUserId(userId);
+      }
+    };
+    
+    checkUserId();
+  }, [userId, imageUrl]);
   
   // Fetch profile image directly from database and storage
   useEffect(() => {
-    // Skip for Maria since we're using direct URL
-    if (isMaria) return;
-    
-    // Skip if we already have a working image
+    // Skip if we already have a working image URL
     if (imgSrc && !imgError) return;
+    
+    // Skip if we have a direct image URL provided
+    if (imageUrl) return;
     
     const getImage = async () => {
       // Always reset the loading state
       setLoading(true);
       setImgError(false);
-      
+
       try {
-        // Check if we have an imageUrl prop
-        if (imageUrl) {
-          setImgSrc(imageUrl);
-          setLoading(false);
-          return;
-        }
-        
-        // First, get the latest profile data
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('profile_image_url')
-          .eq('id', actualUserId)
-          .maybeSingle();
-          
-        if (profileData?.profile_image_url) {
-          console.log(`ProfileAvatar: Found profile_image_url in database: ${profileData.profile_image_url}`);
-          // Check if the URL works
-          try {
-            const response = await fetch(profileData.profile_image_url, { method: 'HEAD' });
-            if (response.ok) {
-              setImgSrc(profileData.profile_image_url);
-              setLoading(false);
-              return;
-            }
-          } catch (e) {
-            console.warn('Error verifying URL:', e);
-          }
-        }
-          
-        // If we get here, either no profile_image_url was found or it didn't work
-        // Try the fetchProfileImage utility as a fallback
+        // Use the utility function to get the image URL
         const url = await fetchProfileImage(actualUserId);
-        setImgSrc(url);
-        setImgError(!url);
+        
+        if (url) {
+          console.log(`ProfileAvatar: Found image URL: ${url}`);
+          setImgSrc(url);
+          setImgError(false);
+        } else {
+          setImgSrc(null);
+          setImgError(true);
+          console.log(`ProfileAvatar: No image found for user ${actualUserId}`);
+        }
       } catch (error) {
         console.error('Error fetching profile image:', error);
         setImgError(true);
@@ -150,46 +192,33 @@ export default function ProfileAvatar({
     if (actualUserId) {
       getImage();
     }
-  }, [actualUserId, imageUrl, imgSrc, imgError, isMaria]);
+  }, [actualUserId, imgSrc, imgError, imageUrl, refreshTimestamp]);
   
   // Handle image load error
   const handleImageError = () => {
     console.warn(`ProfileAvatar: Image failed to load: ${imgSrc}`);
-    
-    // For Maria, directly use hardcoded URL on error
-    if (isMaria) {
-      console.log('ProfileAvatar: Retrying with hardcoded URL for Maria');
-      setImgSrc(`${MARIA_IMAGE_URL}?t=${Date.now()}`);
-      return;
-    }
-    
     setImgError(true);
+    
+    // Force a fetch from the utility
+    setImgSrc(null);
   };
   
   return (
     <Avatar className={avatarClass}>
       {imgSrc && !imgError ? (
         <AvatarImage 
-          src={`${imgSrc}?t=${Date.now()}`} // Add cache-busting timestamp
+          src={`${imgSrc}?t=${Date.now()}`}
           alt={`${firstName} ${lastName}`}
           onError={handleImageError}
-          className={`object-cover ${isMaria ? 'border-[2px] border-pink-400' : ''}`}
-          style={isMaria ? { filter: 'brightness(1.05)' } : undefined}
+          className="object-cover"
         />
       ) : null}
       <AvatarFallback 
         className={`text-${size === 'sm' ? 'xs' : size === 'md' ? 'sm' : 'base'} ${fallbackClassName}`}
-        style={{ backgroundColor: isMaria ? '#f472b6' : getAvatarColor(firstName + lastName) }}
+        style={{ backgroundColor: getAvatarColor(firstName + lastName) }}
       >
         {loading ? (
           <div className="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent" />
-        ) : isMaria ? (
-          <img 
-            src={`${MARIA_IMAGE_URL}?t=${Date.now()}`} 
-            alt="Maria Rubolino" 
-            className="h-full w-full object-cover" 
-            style={{ filter: 'brightness(1.05)' }}
-          />
         ) : (
           getUserInitials(firstName, lastName)
         )}

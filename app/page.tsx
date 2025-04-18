@@ -1,29 +1,84 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { CheckCircle, FileText, DollarSign, Package, Mail, Phone } from "lucide-react"
+import { 
+  CheckCircle, 
+  FileText, 
+  DollarSign, 
+  Package, 
+  Mail, 
+  Phone 
+} from "lucide-react"
 import { ScrollToSection } from "@/components/scroll-to-section"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { LoginDialog } from "@/components/auth/login-dialog"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import ContactForm from "@/components/ContactForm"
+import WrappedContactForm from "@/components/WrappedContactForm"
 import ClientOnly from "@/components/client-only"
+import SearchWrapper from "@/components/SearchWrapper"
 
-export default function Home() {
+// Client component to handle initial state
+function ClientHomeWrapper() {
   const [loginOpen, setLoginOpen] = useState(false)
-  const [isMounted, setIsMounted] = useState(false)
+  
+  return (
+    <Suspense fallback={
+      <div className="bg-gradient-to-b from-sun-light to-white py-12 md:py-16 min-h-[70vh] flex items-center">
+        <div className="container px-4 md:px-6">
+          <div className="grid gap-6 lg:grid-cols-2 lg:gap-12 xl:grid-cols-2">
+            <div className="flex flex-col justify-center space-y-4">
+              <div className="space-y-3">
+                <h1 className="text-3xl font-normal tracking-tight text-navy sm:text-5xl xl:text-6xl">
+                  Give without bounds.
+                  <br />
+                  Give with purpose.
+                </h1>
+                <p className="max-w-[600px] text-navy md:text-xl font-light leading-relaxed opacity-80">
+                  A crowdsourcing platform where passionate donors come together to support private school teachers
+                  and students, creating a ripple effect of positive change in education.
+                </p>
+              </div>
+              
+              {/* Placeholder for search component while loading */}
+              <div className="mt-4 mb-6">
+                <div className="max-w-3xl mx-auto relative">
+                  <div className="bg-white rounded-full shadow-lg pl-5 pr-5 py-3 flex items-center gap-3 flex-wrap md:flex-nowrap">
+                    <div className="text-sky flex-shrink-0">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+                    </div>
+                    <div className="flex-1 min-w-0 text-navy opacity-60 truncate">Find a project to fund now</div>
+                    <div className="rounded-full bg-navy text-white px-4 py-2 font-medium ml-auto whitespace-nowrap flex-shrink-0">Fund Now</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-center">
+              <div className="animate-pulse bg-gray-200 rounded-2xl h-[550px] w-[550px]"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    }>
+      <SuspendedHomeContent loginOpen={loginOpen} setLoginOpen={setLoginOpen} />
+    </Suspense>
+  )
+}
 
+// Content component with client-side functionality
+function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean, setLoginOpen: (open: boolean) => void }) {
+  const [isMounted, setIsMounted] = useState(false)
+  
   // Add this useEffect to handle client-side mounting
   useEffect(() => {
     setIsMounted(true)
   }, [])
-
+  
   // Define all sections for navigation
   const sections = [
     { id: "hero", label: "Home" },
@@ -56,6 +111,19 @@ export default function Home() {
                     and students, creating a ripple effect of positive change in education.
                   </p>
                 </div>
+                
+                {/* Add placeholder for search component */}
+                <div className="mt-4 mb-6">
+                  <div className="max-w-3xl mx-auto relative">
+                    <div className="bg-white rounded-full shadow-lg pl-5 pr-5 py-3 flex items-center gap-3 flex-wrap md:flex-nowrap">
+                      <div className="text-sky flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+                      </div>
+                      <div className="flex-1 min-w-0 text-navy opacity-60 truncate">Find a project to fund now</div>
+                      <button className="rounded-full bg-navy text-white px-4 py-2 font-medium ml-auto whitespace-nowrap flex-shrink-0">Fund Now</button>
+                    </div>
+                  </div>
+                </div>
               </div>
               <div className="flex items-center justify-center">
                 <div className="animate-pulse bg-gray-200 rounded-2xl h-[550px] w-[550px]"></div>
@@ -69,10 +137,51 @@ export default function Home() {
 
   return (
     <>
+      {/* Top Navigation Bar */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="flex h-16 items-center justify-between">
+            <div className="flex items-center gap-6">
+              <Link href="/" className="flex items-center gap-2">
+                <Image
+                  src="/logo-full.svg"
+                  alt="Beyond Measure"
+                  width={172}
+                  height={40}
+                  priority
+                  className="h-10 w-auto"
+                />
+              </Link>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="hidden md:flex">
+                <ScrollToSection sections={sections} />
+              </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={() => setLoginOpen(true)}
+                  variant="outline"
+                  className="hidden sm:flex bg-white text-navy border-none hover:bg-gray-100"
+                >
+                  Log in
+                </Button>
+                <Button
+                  onClick={() => setLoginOpen(true)}
+                  className="hidden sm:flex bg-navy text-white hover:bg-navy/90"
+                >
+                  Sign up
+                </Button>
+                <LoginDialog open={loginOpen} onOpenChange={setLoginOpen} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Hero Section */}
       <section
         id="hero"
-        className="bg-gradient-to-b from-sun-light to-white py-12 md:py-16 min-h-[70vh] flex items-center"
+        className="bg-gradient-to-b from-sun-light to-white py-12 md:py-16 pt-32 min-h-[70vh] flex items-center"
       >
         <div className="container px-4 md:px-6">
           <div className="grid gap-6 lg:grid-cols-2 lg:gap-12 xl:grid-cols-2">
@@ -84,116 +193,132 @@ export default function Home() {
                   Give with purpose.
                 </h1>
                 <p className="max-w-[600px] text-navy md:text-xl font-light leading-relaxed opacity-80">
-                  A crowdsourcing platform where passionate donors come together to support private school teachers and
-                  students, creating a ripple effect of positive change in education.
+                  A crowdsourcing platform where passionate donors come together to support private school teachers
+                  and students, creating a ripple effect of positive change in education.
                 </p>
               </div>
-              <div className="flex flex-col gap-3 min-[400px]:flex-row">
-                <Button variant="sky" className="rounded-full" onClick={(e) => {
-                  e.preventDefault();
-                  setLoginOpen(true);
-                }}>
-                  Get Started
+              
+              {/* Add SearchWrapper with explicit client-only rendering */}
+              <div className="mt-4 mb-6">
+                <Suspense fallback={
+                  <div className="max-w-3xl mx-auto relative">
+                    <div className="bg-white rounded-full shadow-lg pl-5 pr-5 py-3 flex items-center gap-3 flex-wrap md:flex-nowrap">
+                      <div className="text-sky flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+                      </div>
+                      <div className="flex-1 min-w-0 text-navy opacity-60 truncate">Find a project to fund now</div>
+                      <div className="rounded-full bg-navy text-white px-4 py-2 font-medium ml-auto whitespace-nowrap flex-shrink-0">Fund Now</div>
+                    </div>
+                  </div>
+                }>
+                  <ClientOnly>
+                    <SearchWrapper />
+                  </ClientOnly>
+                </Suspense>
+              </div>
+              
+              <div className="flex flex-wrap gap-3 mt-8">
+                <Button asChild className="rounded-full text-white bg-navy hover:bg-navy/90 px-6">
+                  <Link href="/projects">Browse Projects</Link>
                 </Button>
                 <Button
+                  asChild
                   variant="outline"
-                  className="rounded-full border-salmon text-salmon hover:bg-salmon-light hover:text-salmon"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    const element = document.getElementById("about");
-                    if (element) element.scrollIntoView({ behavior: "smooth" });
-                  }}
+                  className="rounded-full border-navy text-navy hover:bg-gray-100 px-6"
                 >
-                  Learn More
+                  <Link href="/projects/create">Submit a Project</Link>
                 </Button>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-6 mt-8">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <span className="text-navy">Trusted Platform</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <span className="text-navy">100% to Schools</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <span className="text-navy">Tax Deductible</span>
+                </div>
               </div>
             </div>
             <div className="flex items-center justify-center">
-              <div className="overflow-hidden rounded-2xl shadow-soft">
-                <Image
-                  src="/placeholder.svg?height=550&width=550"
-                  width={550}
-                  height={550}
-                  alt="Hero Image"
-                  className="object-cover"
-                />
-              </div>
+              <Image
+                src="/hero-image.png"
+                alt="Students in classroom"
+                width={550}
+                height={550}
+                className="rounded-2xl object-cover"
+                priority
+              />
             </div>
-          </div>
-
-          {/* Section Navigation */}
-          <div className="mt-8 md:mt-10">
-            <ScrollToSection sections={sections} />
           </div>
         </div>
       </section>
 
-      {/* How it Works Section */}
-      <section id="how-it-works" className="py-16 md:py-24 bg-slate-50">
+      {/* How It Works Section */}
+      <section
+        id="how-it-works"
+        className="py-12 md:py-24 bg-white"
+      >
         <div className="container px-4 md:px-6">
-          <div className="flex flex-col items-center text-center mb-12">
-            <h2 className="text-3xl md:text-5xl font-bold text-[#0E5D7F] mb-4">How it Works</h2>
-            <p className="text-xl text-slate-600 max-w-3xl">
-              You know what your classroom needs. We're here to help you bring those ideas to life.
-            </p>
+          <div className="flex flex-col items-center justify-center space-y-4 text-center">
+            <div className="space-y-2">
+              <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl text-navy">How It Works</h2>
+              <p className="max-w-[900px] text-navy md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                Our platform connects donors with private schools to fund educational projects and student needs.
+              </p>
+            </div>
           </div>
-          
-          <div className="grid md:grid-cols-3 gap-8 md:gap-12">
-            {/* Step 1 */}
-            <div className="flex flex-col items-center text-center">
-              <div className="bg-blue-100 rounded-full w-20 h-20 flex items-center justify-center mb-6 relative">
-                <span className="absolute -top-2 -left-2 w-8 h-8 rounded-full bg-white flex items-center justify-center text-2xl font-bold text-[#E96951]">1</span>
-                <svg className="w-10 h-10 text-[#3AB5E9]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-              </div>
-              <h3 className="text-2xl font-bold text-[#0E5D7F] mb-3">Create Your Project</h3>
-              <p className="text-slate-600">
-                Design a compelling campaign for the resources your students need. Share your story and explain how these materials will enhance learning in your classroom.
-              </p>
-            </div>
-            
-            {/* Step 2 */}
-            <div className="flex flex-col items-center text-center">
-              <div className="bg-red-100 rounded-full w-20 h-20 flex items-center justify-center mb-6 relative">
-                <span className="absolute -top-2 -left-2 w-8 h-8 rounded-full bg-white flex items-center justify-center text-2xl font-bold text-[#E96951]">2</span>
-                <svg className="w-10 h-10 text-[#E96951]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h3 className="text-2xl font-bold text-[#0E5D7F] mb-3">Fund Your Classroom</h3>
-              <p className="text-slate-600">
-                Share your project with friends, family, and our community of donors passionate about education. Watch as contributions help you reach your funding goal.
-              </p>
-            </div>
-            
-            {/* Step 3 */}
-            <div className="flex flex-col items-center text-center">
-              <div className="bg-green-100 rounded-full w-20 h-20 flex items-center justify-center mb-6 relative">
-                <span className="absolute -top-2 -left-2 w-8 h-8 rounded-full bg-white flex items-center justify-center text-2xl font-bold text-[#E96951]">3</span>
-                <svg className="w-10 h-10 text-[#A8BF87]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <h3 className="text-2xl font-bold text-[#0E5D7F] mb-3">Transform Your Teaching</h3>
-              <p className="text-slate-600">
-                Receive your materials and implement your vision. Share updates with your donors to show the impact of their generosity on your students' learning experiences.
-              </p>
-            </div>
+          <div className="mx-auto grid max-w-5xl items-center gap-6 py-12 lg:grid-cols-3 lg:gap-12">
+            <Card className="relative overflow-hidden border-none shadow-md">
+              <div className="absolute -top-12 -right-12 h-24 w-24 rounded-full bg-sky/10"></div>
+              <CardHeader>
+                <FileText className="h-9 w-9 text-sky" />
+                <CardTitle className="text-navy text-xl mt-4">1. Submit a Project</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-navy opacity-80">
+                  Private schools can submit their educational project needs, including detailed information and funding goals.
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="relative overflow-hidden border-none shadow-md">
+              <div className="absolute -top-12 -right-12 h-24 w-24 rounded-full bg-sky/10"></div>
+              <CardHeader>
+                <DollarSign className="h-9 w-9 text-sky" />
+                <CardTitle className="text-navy text-xl mt-4">2. Fund a Project</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-navy opacity-80">
+                  Donors can browse projects, make tax-deductible contributions, and track the impact of their donations.
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="relative overflow-hidden border-none shadow-md">
+              <div className="absolute -top-12 -right-12 h-24 w-24 rounded-full bg-sky/10"></div>
+              <CardHeader>
+                <Package className="h-9 w-9 text-sky" />
+                <CardTitle className="text-navy text-xl mt-4">3. Complete the Project</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-navy opacity-80">
+                  Schools receive the funds when the project is fully funded, implement their plan, and share updates with donors.
+                </p>
+              </CardContent>
+            </Card>
           </div>
           
           <div className="flex justify-center mt-12">
-            <Button className="bg-[#0E5D7F] hover:bg-[#0E5D7F]/90 text-white py-3 px-8 rounded-full text-lg font-medium" onClick={(e) => {
-              e.preventDefault();
-              setLoginOpen(true);
-            }}>
-              Get Started
+            <Button
+              asChild
+              className="bg-navy text-white hover:bg-navy/90 px-8 py-6 rounded-full text-lg"
+            >
+              <Link href="/projects/create">Submit Your Project</Link>
             </Button>
           </div>
-          
-          <p className="text-center mt-10 text-lg text-slate-500 italic">
-            If you can imagine it, you can fund it.
-          </p>
         </div>
       </section>
 
@@ -416,10 +541,10 @@ export default function Home() {
                 If you couldn't find the answer you were looking for, please reach out to our support team.
               </p>
               <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                <Button variant="sky" className="rounded-full">
+                <Button variant="sky" className="rounded-full" asChild>
                   <Link href="/contact">Contact Support</Link>
                 </Button>
-                <Button variant="outline" className="rounded-full border-sky text-sky hover:bg-sky/10">
+                <Button variant="outline" className="rounded-full border-sky text-sky hover:bg-sky/10" asChild>
                   <Link href="/faq">Browse Help Center</Link>
                 </Button>
               </div>
@@ -431,5 +556,50 @@ export default function Home() {
       {/* Login Dialog */}
       <LoginDialog open={loginOpen} onOpenChange={setLoginOpen} />
     </>
+  )
+}
+
+// Loading fallback component for the entire page
+function HomeLoading() {
+  return (
+    <div className="bg-gradient-to-b from-sun-light to-white py-12 md:py-16 min-h-[70vh] flex items-center">
+      <div className="container px-4 md:px-6">
+        <div className="grid gap-6 lg:grid-cols-2 lg:gap-12 xl:grid-cols-2">
+          <div className="flex flex-col justify-center space-y-4">
+            <div className="space-y-3">
+              <div className="h-12 w-3/4 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-12 w-1/2 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-24 w-full bg-gray-200 rounded animate-pulse"></div>
+            </div>
+            
+            <div className="mt-4 mb-6">
+              <div className="max-w-3xl mx-auto relative">
+                <div className="bg-white rounded-full shadow-lg pl-5 pr-5 py-3 flex items-center gap-3 flex-wrap md:flex-nowrap">
+                  <div className="text-sky flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+                  </div>
+                  <div className="flex-1 min-w-0 text-navy opacity-60 truncate">Find a project to fund now</div>
+                  <div className="rounded-full bg-navy text-white px-4 py-2 font-medium ml-auto whitespace-nowrap flex-shrink-0">Fund Now</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center justify-center">
+            <div className="animate-pulse bg-gray-200 rounded-2xl h-[550px] w-[550px]"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Main export - Double wrapped in Suspense for safety
+export default function Home() {
+  return (
+    <Suspense fallback={<HomeLoading />}>
+      <Suspense fallback={<HomeLoading />}>
+        <ClientHomeWrapper />
+      </Suspense>
+    </Suspense>
   )
 }

@@ -7,6 +7,7 @@ import ProjectActions from './ProjectActions';
 import { useAuth } from './AuthProvider';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
 import { useRouter } from 'next/navigation';
+import ProfileAvatar from './ProfileAvatar';
 
 // Create a local implementation if the import fails
 // This can be removed once the proper import is available
@@ -190,6 +191,8 @@ export function ProjectDetail({ projectId, isTeacher = false, isAdmin = false, a
   const [isSaved, setIsSaved] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [donationAmount, setDonationAmount] = useState('');
+  const [teacherUserId, setTeacherUserId] = useState<string | null>(null);
+  const [teacherAuthId, setTeacherAuthId] = useState<string | null>(null);
   
   // HARDCODED FIX: Direct reference to known working image for Maria
   const MARIA_AUTH_ID = '89e55400-0f0e-4a27-91f1-f746d31dcf81';
@@ -243,154 +246,52 @@ export function ProjectDetail({ projectId, isTeacher = false, isAdmin = false, a
         
         // Transform data to match expected format
         let teacherData = null;
-        
         if (data.teacher_profiles) {
-          // Check if teacher_profiles is an array or single object
-          const teacherProfile = Array.isArray(data.teacher_profiles) 
-            ? data.teacher_profiles[0] 
-            : data.teacher_profiles;
+          // Handle the teacher profile data
+          const teacherProfile = data.teacher_profiles;
+          teacherData = {
+            id: teacherProfile.id,
+            display_name: 'Teacher', // Default name
+            school: teacherProfile.school_name ? {
+              name: teacherProfile.school_name,
+              city: teacherProfile.school_city,
+              state: teacherProfile.school_state
+            } : null
+          };
+          
+          // Fetch teacher user details for display name and profile image
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('first_name, last_name, profile_image_url')
+            .eq('id', teacherProfile.user_id)
+            .single();
             
-          if (teacherProfile) {
-            // Extract teacher and school information
-            const profileId = teacherProfile.id;
-            const schoolName = teacherProfile.school_name;
-            const schoolCity = teacherProfile.school_city;
-            const schoolState = teacherProfile.school_state;
-            const userId = teacherProfile.user_id;
-            
-            // Try to get teacher's name from users table
-            let displayName = "Teacher";
-            let profileImageUrl = null;
-            let imageUrl = null;
-            
-            if (userId) {
-              try {
-                const { data: userData, error: userError } = await supabase
-                  .from('users')
-                  .select('first_name, last_name, profile_image_url')
-                  .eq('id', userId)
-                  .single();
-                  
-                if (!userError && userData) {
-                  displayName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
-                  
-                  // If we found user data and they have a profile image, use it directly
-                  if (userData.profile_image_url) {
-                    if (DEBUG_IMAGES) console.log(`Found userData.profile_image_url: ${userData.profile_image_url}`);
-                    profileImageUrl = userData.profile_image_url;
-                    // Set directly to state for immediate access
-                    setTeacherImageUrl(userData.profile_image_url);
-                    // Use safe type assertion to add the field
-                    (teacherProfile as any).profile_image_url = userData.profile_image_url;
-                  }
-                  
-                  // Log available profile data for debugging
-                  if (DEBUG_IMAGES) {
-                    console.log('Teacher profile data:', { 
-                      userId,
-                      displayName,
-                      profileImageUrl,
-                      teacherProfile
-                    });
-                  }
-                }
-                
-                // Also check if there's an image_url in the teacher profile
-                if ('image_url' in teacherProfile && teacherProfile.image_url && typeof teacherProfile.image_url === 'string') {
-                  if (DEBUG_IMAGES) console.log(`Found teacherProfile.image_url: ${teacherProfile.image_url}`);
-                  imageUrl = teacherProfile.image_url;
-                  // If we don't have a profile image URL yet, use this one
-                  if (!profileImageUrl) {
-                    setTeacherImageUrl(teacherProfile.image_url);
-                  }
-                }
-                
-                // Try to fetch teacher image with our utility function as well
-                try {
-                  if (!profileImageUrl && !imageUrl && teacherProfile.id) {
-                    if (DEBUG_IMAGES) console.log(`Trying fetchTeacherImage utility for teacher ID: ${teacherProfile.id}`);
-                    const fetchedImageUrl = await fetchTeacherImage(teacherProfile.id);
-                    if (fetchedImageUrl) {
-                      if (DEBUG_IMAGES) console.log(`fetchTeacherImage returned: ${fetchedImageUrl}`);
-                      imageUrl = fetchedImageUrl;
-                      setTeacherImageUrl(fetchedImageUrl);
-                    }
-                  }
-                } catch (imgErr) {
-                  console.warn("Error using fetchTeacherImage:", imgErr);
-                }
-                
-                // Additionally, try a direct storage path construction as a fallback
-                if (!profileImageUrl && !imageUrl && userId) {
-                  // Try both storage paths
-                  const directPaths = [
-                    `${SUPABASE_URL}/storage/v1/object/public/teacher_images/${userId}/avatar`,
-                    `${SUPABASE_URL}/storage/v1/object/public/profile_images/${userId}/profile.jpg`, 
-                    `${SUPABASE_URL}/storage/v1/object/public/profile_images/${userId}/profile.png`
-                  ];
-                  
-                  if (DEBUG_IMAGES) console.log('[DEBUG] Trying direct paths for userId:', userId, directPaths);
-                  
-                  for (const directPath of directPaths) {
-                    if (DEBUG_IMAGES) console.log(`Trying direct storage path: ${directPath}`);
-                    
-                    // Check if the image exists at this path
-                    try {
-                      const response = await fetch(directPath, { method: 'HEAD' });
-                      if (response.ok) {
-                        if (DEBUG_IMAGES) console.log('[DEBUG] Direct path image exists!', directPath);
-                        imageUrl = directPath;
-                        setTeacherImageUrl(directPath);
-                        break; // Stop checking once we find a valid image
-                      } else {
-                        if (DEBUG_IMAGES) console.log('[DEBUG] Direct path returned status:', response.status);
-                      }
-                    } catch (err) {
-                      if (DEBUG_IMAGES) console.log('[DEBUG] Error checking direct path:', directPath, err);
-                    }
-                  }
-                }
-              } catch (err) {
-                console.error('Error getting user data for teacher:', err);
-              }
-            }
-            
-            if (profileId) {
-              teacherData = {
-                id: profileId,
-                display_name: displayName,
-                school: {
-                  name: schoolName,
-                  city: schoolCity,
-                  state: schoolState
-                },
-                // Set the profile image URL directly from what we found in the user data
-                profile_image_url: profileImageUrl,
-                // Fallback to any image_url we might have found
-                image_url: imageUrl
-              };
-              
-              if (DEBUG_IMAGES) {
-                console.log('[Image Debug] Final teacher data with image URLs:', {
-                  profile_image_url: teacherData.profile_image_url,
-                  image_url: teacherData.image_url,
-                  teacherImageUrl
-                });
-              }
-            }
+          if (!userError && userData) {
+            const firstName = userData.first_name || '';
+            const lastName = userData.last_name || '';
+            teacherData.display_name = `${firstName} ${lastName}`.trim() || 'Teacher';
+            teacherData.profile_image_url = userData.profile_image_url;
           }
         }
         
-        const formattedData: ProjectData = {
+        // Extract categories from the nested structure
+        const categories = data.categories 
+          ? data.categories
+              .map(pc => pc.category)
+              .filter(Boolean)
+              .map(cat => ({
+                id: cat.id,
+                name: cat.name
+              }))
+          : [];
+        
+        const formattedProject: ProjectData = {
           ...data,
           teacher: teacherData,
-          categories: data.categories.map((c: any) => ({
-            id: c.category.id,
-            name: c.category.name
-          }))
+          categories: categories
         };
         
-        setProject(formattedData);
+        setProject(formattedProject);
       } catch (err) {
         console.error('Error fetching project details:', err);
         setError('Failed to load project details');
@@ -962,11 +863,11 @@ export function ProjectDetail({ projectId, isTeacher = false, isAdmin = false, a
   // Add this new useEffect after the existing ones
   useEffect(() => {
     if (project?.teacher?.id) {
-      // Get the user_id from the teacher profile
+      // Get the user_id and auth_id from the teacher profile
       (async () => {
         try {
-          const teacherId = project.teacher?.id; // Safe access
-          if (!teacherId) return; // Extra safety check
+          const teacherId = project.teacher?.id;
+          if (!teacherId) return;
           
           const { data, error } = await supabase
             .from('teacher_profiles')
@@ -981,22 +882,22 @@ export function ProjectDetail({ projectId, isTeacher = false, isAdmin = false, a
           
           if (data && data.user_id) {
             console.log('[DEBUG] Found user_id for teacher:', data.user_id);
+            setTeacherUserId(data.user_id);
             
-            // Try to get the actual profile from users table
+            // Get the auth_id from the users table
             const { data: userData, error: userError } = await supabase
               .from('users')
-              .select('profile_image_url')
+              .select('auth_id, profile_image_url')
               .eq('id', data.user_id)
-              .single();
-            
-            if (userError) {
-              console.error('Error getting user data:', userError);
-            } else if (userData) {
-              console.log('[DEBUG] Found user data with profile_image_url:', userData.profile_image_url);
+              .maybeSingle();
               
-              // If we found a URL, update the state to use it
+            if (!userError && userData && userData.auth_id) {
+              console.log('[DEBUG] Found auth_id for teacher:', userData.auth_id);
+              // Store this in state for use with the ProfileAvatar component
+              setTeacherAuthId(userData.auth_id);
+              
+              // If there's also a profile_image_url, use it directly
               if (userData.profile_image_url) {
-                console.log('[DEBUG] Setting teacherImageUrl to:', userData.profile_image_url);
                 setTeacherImageUrl(userData.profile_image_url);
               }
             }
@@ -1157,20 +1058,28 @@ export function ProjectDetail({ projectId, isTeacher = false, isAdmin = false, a
             <div className="mb-6 bg-gradient-to-r from-[#3AB5E9]/10 to-[#0E5D7F]/10 rounded-lg border border-[#3AB5E9]/20 p-4">
               <div className="flex items-center text-sm">
                 <div className="flex-shrink-0 mr-4">
-                  <img 
-                    src={imageToUse}
-                    alt={project.teacher.display_name}
-                    className="h-16 w-16 rounded-full border-2 border-[#3AB5E9] shadow-md object-cover"
-                    onError={(e) => {
-                      // If image fails to load and this is Maria, force the Maria image
-                      if (useMariaImage) {
-                        e.currentTarget.src = `${MARIA_IMAGE_URL}?t=${Date.now()}`;
-                      } else {
-                        // For others, use default image
-                        e.currentTarget.src = "https://efneocmdolkzdfhtqkpl.supabase.co/storage/v1/object/public/profile_images/d84d546f-df1d-474d-85ab-e3fc0e805d6a/profile.jpg";
-                      }
-                    }}
-                  />
+                  {/* Special handling for Maria's profile */}
+                  {(teacherUserId === '36a202aa-0670-4225-8507-163fde64890f' || 
+                   teacherAuthId === '89e55400-0f0e-4a27-91f1-f746d31dcf81' ||
+                   useMariaImage) ? (
+                    <Avatar className="h-16 w-16 border-2 border-[#3AB5E9] shadow-md">
+                      <AvatarFallback 
+                        className="text-base text-white"
+                        style={{ backgroundColor: "#3AB5E9" }}
+                      >
+                        MR
+                      </AvatarFallback>
+                    </Avatar>
+                  ) : (
+                    <ProfileAvatar
+                      userId={teacherAuthId || teacherUserId || project.teacher.id}
+                      firstName={project.teacher.display_name.split(' ')[0]}
+                      lastName={project.teacher.display_name.split(' ').slice(1).join(' ')}
+                      imageUrl={teacherImageUrl || project.teacher.profile_image_url}
+                      size="lg"
+                      className="border-2 border-[#3AB5E9] shadow-md"
+                    />
+                  )}
                 </div>
                 <div>
                   <div className="font-medium text-[#0E5D7F] text-lg">
@@ -1338,6 +1247,7 @@ export function ProjectDetail({ projectId, isTeacher = false, isAdmin = false, a
             <div className="flex space-x-3">
               <ProjectActions 
                 projectId={project.id} 
+                projectTitle={project.title}
                 currentStatus={project.status} 
                 isTeacher={isTeacher}
                 isAdmin={isAdmin}

@@ -9,6 +9,10 @@ import { Mail } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function ContactForm() {
+  // Dynamically import useSearchParams to ensure proper Suspense handling
+  const nextNavigation = require('next/navigation');
+  const searchParams = nextNavigation.useSearchParams();
+  
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [subject, setSubject] = useState('');
@@ -24,6 +28,29 @@ export default function ContactForm() {
     subject: false,
     message: false
   });
+
+  // Initialize form with URL params if available
+  useEffect(() => {
+    if (searchParams) {
+      const nameParam = searchParams.get('name');
+      const emailParam = searchParams.get('email');
+      const subjectParam = searchParams.get('subject');
+      const messageParam = searchParams.get('message');
+      
+      if (nameParam) setName(nameParam);
+      if (emailParam) setEmail(emailParam);
+      if (subjectParam) setSubject(subjectParam);
+      if (messageParam) setMessage(messageParam);
+      
+      // Mark prefilled fields as touched
+      setTouched({
+        name: !!nameParam,
+        email: !!emailParam,
+        subject: !!subjectParam,
+        message: !!messageParam
+      });
+    }
+  }, [searchParams]);
 
   // Auto-hide notification after 5 seconds
   useEffect(() => {
@@ -91,6 +118,20 @@ export default function ContactForm() {
     }
     return value.trim() === '' ? "border-red-500 focus:ring-red-500" : "border-green-500 focus:ring-green-500";
   };
+  
+  // Set demo request subject
+  const handleSetDemoSubject = () => {
+    setSubject('Request for Demo');
+    setMessage('I would like to schedule a demo of Beyond Measure for my school/district.');
+    setTouched(prev => ({ ...prev, subject: true, message: true }));
+  };
+
+  // Check if this is coming from the demo button
+  useEffect(() => {
+    if (searchParams && searchParams.get('source') === 'contact') {
+      handleSetDemoSubject();
+    }
+  }, [searchParams]);
 
   return (
     <Card className="w-full">
@@ -200,15 +241,14 @@ export default function ContactForm() {
             </Label>
             <div className="relative">
               <Input
-                type="text"
-                name="subject"
                 id="subject"
+                name="subject"
                 required
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 onBlur={() => handleBlur('subject')}
                 className={getInputClass('subject', subject)}
-                placeholder="Reason for contacting us"
+                placeholder="How can we help?"
               />
               {touched.subject && subject.trim() !== '' && (
                 <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
@@ -231,16 +271,15 @@ export default function ContactForm() {
               <Textarea
                 id="message"
                 name="message"
-                rows={5}
                 required
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onBlur={() => handleBlur('message')}
-                className={getInputClass('message', message)}
-                placeholder="Your message here..."
+                className={`min-h-[120px] ${getInputClass('message', message)}`}
+                placeholder="Tell us how we can help..."
               />
               {touched.message && message.trim() !== '' && (
-                <div className="absolute top-3 right-0 flex items-start pr-3 pointer-events-none">
+                <div className="absolute top-2 right-2 flex items-center pr-1 pointer-events-none">
                   <svg className="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
@@ -249,34 +288,39 @@ export default function ContactForm() {
             </div>
           </div>
 
-          <div>
-            <Button
-              type="submit"
+          <div className="flex items-center justify-between mt-8">
+            <Button 
+              type="submit" 
               disabled={isLoading}
-              className="w-full bg-[#0E5D7F] hover:bg-[#0E5D7F]/90 text-white font-semibold py-2 px-4 rounded-md"
+              className="bg-[#3AB5E9] hover:bg-[#3AB5E9]/90"
             >
               {isLoading ? (
-                <div className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span>Sending...</span>
-                </div>
+                  Sending...
+                </>
               ) : (
-                <span>Send Message</span>
+                <>
+                  <Mail className="mr-2 h-4 w-4" />
+                  Send Message
+                </>
               )}
             </Button>
-          </div>
-
-          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-            <h3 className="text-xl font-semibold mb-4 text-[#0E5D7F]">Contact Information</h3>
-            <div className="space-y-3">
-              <p className="flex items-center text-muted-foreground">
-                <Mail className="h-5 w-5 mr-3 text-[#3AB5E9]" />
-                <span>support@gobeyondmeasure.org</span>
-              </p>
-            </div>
+            
+            {/* Demo request quick button - only show if not already a demo request */}
+            {subject !== 'Request for Demo' && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSetDemoSubject}
+                className="text-sm"
+              >
+                Request a Demo
+              </Button>
+            )}
           </div>
         </form>
       </CardContent>

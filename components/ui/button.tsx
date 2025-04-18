@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
@@ -62,22 +63,15 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     }, [])
 
     const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-      // For navigation buttons with Link children, let the Link handle navigation
+      // Skip if not mounted yet
       if (!isMounted) return
-      
-      const hasLinkOrAnchor = event.currentTarget.querySelector('a, [href]') !== null;
-      
-      if (!hasLinkOrAnchor) {
-        // Only prevent default for regular buttons
-        event.preventDefault();
-      }
       
       // Call the original onClick handler if it exists
       if (onClick) {
         onClick(event);
       }
-
-      // If scrollToId is provided, scroll to that element
+      
+      // Handle scroll behavior for anchor links when requested
       if (scrollToId && isMounted) {
         const element = document.getElementById(scrollToId);
         if (element) {

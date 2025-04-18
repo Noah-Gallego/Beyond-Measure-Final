@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { supabase } from '../../../../utils/supabase';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CheckCircle, AlertCircle } from 'lucide-react';
 
-export default function CreateProjectPage() {
+// Content component that will be wrapped in Suspense
+function CreateProjectContent() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [isTeacher, setIsTeacher] = useState(false);
@@ -460,5 +461,21 @@ export default function CreateProjectPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Main component with Suspense boundary
+export default function CreateProjectPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <div className="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-lg text-gray-700 dark:text-gray-300">Loading...</p>
+        </div>
+      </div>
+    }>
+      <CreateProjectContent />
+    </Suspense>
   );
 } 

@@ -1,11 +1,25 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useAuth } from "@/components/AuthProvider"
 import { supabase } from "@/utils/supabase"
 import { getDashboardUrlByRole } from "@/utils/auth-helpers"
 
-export default function DebugAuthPage() {
+// Wrapper component that doesn't use any hooks that require Suspense
+function ClientWrapper() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto p-8">
+        <h1 className="text-2xl font-bold mb-4">Loading...</h1>
+      </div>
+    }>
+      <DebugAuthContent />
+    </Suspense>
+  );
+}
+
+// Content component that will be wrapped in Suspense
+function DebugAuthContent() {
   const { user, isLoading } = useAuth()
   const [databaseUserData, setDatabaseUserData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -162,4 +176,9 @@ export default function DebugAuthPage() {
       )}
     </div>
   )
+}
+
+// Main component
+export default function DebugAuthPage() {
+  return <ClientWrapper />;
 } 

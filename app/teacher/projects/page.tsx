@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { supabase } from '../../../utils/supabase';
 import Link from 'next/link';
 import ProjectActions from '../../../components/ProjectActions';
@@ -39,7 +39,8 @@ type UserProfile = {
   };
 };
 
-export default function TeacherProjectsPage() {
+// Main content component
+function TeacherProjectsContent() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -406,7 +407,11 @@ export default function TeacherProjectsPage() {
   return (
     <div className="container mx-auto py-10 px-4">
       <div className="mb-8 flex items-center">
-        <Link href="/dashboard" className="mr-4">
+        <Link 
+          href="/dashboard" 
+          passHref
+          className="mr-4"
+        >
           <Button variant="ghost" size="icon" className="text-[#0E5D7F] hover:text-[#0E5D7F]/80 hover:bg-[#3AB5E9]/10">
             <ChevronLeft className="h-5 w-5" />
           </Button>
@@ -457,7 +462,7 @@ export default function TeacherProjectsPage() {
               </div>
             </div>
             <div className="flex-shrink-0">
-              <Link href="/teacher/projects/create">
+              <Link href="/teacher/projects/create" passHref>
                 <Button className="gap-2 bg-[#E96951] hover:bg-[#E96951]/90 shadow-md transition-all hover:shadow-lg">
                   <Plus className="h-4 w-4" />
                   Create New Project
@@ -571,23 +576,22 @@ export default function TeacherProjectsPage() {
                   </CardContent>
                   
                   <CardFooter className="flex justify-between border-t pt-4">
-                    <Link href={`/teacher/projects/${project.id}`} className="flex items-center gap-1 text-[#3AB5E9] hover:text-[#0E5D7F] font-medium transition-colors">
+                    <Link href={`/teacher/projects/${project.id}`} passHref className="flex items-center gap-1 text-[#3AB5E9] hover:text-[#0E5D7F] font-medium transition-colors">
                       View Details
                       <ArrowRight className="h-4 w-4" />
                     </Link>
                     
                     <div className="flex space-x-2">
                       {project.status !== 'active' && project.status !== 'funded' && project.status !== 'completed' && (
-                        <Link href={`/teacher/projects/edit/${project.id}`}>
-                          <Button variant="outline" size="sm" className="gap-1 border-[#3AB5E9] text-[#3AB5E9] hover:bg-[#3AB5E9]/10">
-                            <Edit className="h-3.5 w-3.5" />
-                            Edit
-                          </Button>
+                        <Link href={`/teacher/projects/edit/${project.id}`} passHref className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3 border-[#3AB5E9] text-[#3AB5E9] hover:bg-[#3AB5E9]/10 gap-1">
+                          <Edit className="h-3.5 w-3.5" />
+                          Edit
                         </Link>
                       )}
                       
                       <ProjectActions
                         projectId={project.id}
+                        projectTitle={project.title}
                         currentStatus={project.status}
                         isTeacher={true}
                         onProjectUpdated={handleProjectUpdated}
@@ -602,5 +606,31 @@ export default function TeacherProjectsPage() {
         </>
       )}
     </div>
+  );
+}
+
+// Loading fallback
+function TeacherProjectsLoading() {
+  return (
+    <div className="container mx-auto py-10">
+      <div className="flex justify-between items-center mb-6">
+        <div className="h-8 w-48 bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-10 w-32 bg-gray-200 rounded animate-pulse"></div>
+      </div>
+      <div className="space-y-6">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="bg-white rounded-xl shadow-md h-64 animate-pulse"></div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Main export with Suspense boundary
+export default function TeacherProjectsPage() {
+  return (
+    <Suspense fallback={<TeacherProjectsLoading />}>
+      <TeacherProjectsContent />
+    </Suspense>
   );
 } 
