@@ -92,6 +92,46 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
   if (!isMounted) {
     return (
       <>
+        {/* Modern top banner */}
+        <div className="w-full bg-gradient-to-r from-navy via-sky to-sun py-3 px-4 text-white flex justify-between items-center sticky top-0 z-50 shadow-md">
+          <Link href="/" className="flex items-center gap-2">
+            <Image
+              src="/logo.jpg"
+              alt="Beyond Measure"
+              width={40}
+              height={40}
+              className="h-8 w-auto rounded-md border-2 border-white shadow-sm"
+            />
+            <span className="font-bold text-lg tracking-tight">Beyond Measure</span>
+          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/about" className="hover:text-sun transition-colors text-sm md:text-base hidden md:inline-block">
+              About Us
+            </Link>
+            <Link href="/projects" className="hover:text-sun transition-colors text-sm md:text-base hidden md:inline-block">
+              Projects
+            </Link>
+            <Link href="/contact" className="hover:text-sun transition-colors text-sm md:text-base hidden md:inline-block">
+              Contact
+            </Link>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => setLoginOpen(true)}
+                variant="outline"
+                className="bg-transparent text-white border-white hover:bg-white/20 text-sm h-8 px-3"
+              >
+                Log in
+              </Button>
+              <Button
+                onClick={() => setLoginOpen(true)}
+                className="bg-sun text-navy hover:bg-sun/90 text-sm h-8 px-3"
+              >
+                Sign up
+              </Button>
+            </div>
+          </div>
+        </div>
+
         {/* Hero Section - Simplified for SSR */}
         <section
           id="hero"
@@ -137,6 +177,46 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
 
   return (
     <>
+      {/* Modern top banner */}
+      <div className="w-full bg-gradient-to-r from-navy via-sky to-sun py-3 px-4 text-white flex justify-between items-center sticky top-0 z-50 shadow-md">
+        <Link href="/" className="flex items-center gap-2">
+          <Image
+            src="/logo.jpg"
+            alt="Beyond Measure"
+            width={40}
+            height={40}
+            className="h-8 w-auto rounded-md border-2 border-white shadow-sm"
+          />
+          <span className="font-bold text-lg tracking-tight">Beyond Measure</span>
+        </Link>
+        <div className="flex items-center gap-4">
+          <Link href="/about" className="hover:text-sun transition-colors text-sm md:text-base hidden md:inline-block">
+            About Us
+          </Link>
+          <Link href="/projects" className="hover:text-sun transition-colors text-sm md:text-base hidden md:inline-block">
+            Projects
+          </Link>
+          <Link href="/contact" className="hover:text-sun transition-colors text-sm md:text-base hidden md:inline-block">
+            Contact
+          </Link>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => setLoginOpen(true)}
+              variant="outline"
+              className="bg-transparent text-white border-white hover:bg-white/20 text-sm h-8 px-3"
+            >
+              Log in
+            </Button>
+            <Button
+              onClick={() => setLoginOpen(true)}
+              className="bg-sun text-navy hover:bg-sun/90 text-sm h-8 px-3"
+            >
+              Sign up
+            </Button>
+          </div>
+        </div>
+      </div>
+
       {/* Hero Section */}
       <section
         id="hero"
@@ -316,85 +396,81 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
               asChild
               className="bg-navy text-white hover:bg-navy/90 px-8 py-6 rounded-full text-lg"
             >
-              <Link href="/projects/create">Submit Your Project</Link>
+              <Link href="/projects/create">Get Funded Now!</Link>
             </Button>
           </div>
         </div>
       </section>
 
       {/* Testimonials */}
-      <section id="testimonials" className="bg-navy py-24 text-white min-h-screen flex items-center">
+      <section id="testimonials" className="bg-gradient-to-b from-navy to-navy/90 py-24 text-white min-h-screen flex items-center">
         <div className="container px-4 md:px-6">
-          <div className="flex flex-col items-center justify-center space-y-4 text-center">
+          <div className="flex flex-col items-center justify-center space-y-4 text-center mb-12">
             <div className="space-y-2">
-              <h2 className="text-3xl font-normal tracking-tight sm:text-4xl md:text-5xl">Trusted by Educators</h2>
+              <h2 className="text-3xl font-normal tracking-tight sm:text-4xl md:text-5xl">Making A Difference</h2>
               <p className="max-w-[900px] text-sun md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed font-light opacity-90">
-                Hear from teachers who have transformed their assessment practices with BeyondMeasure.
+                See how Beyond Measure transforms educational experiences for students across the country
               </p>
             </div>
           </div>
-          <div className="grid gap-6 lg:grid-cols-3 lg:gap-12">
-            <Card className="bg-white border-none shadow-md">
+          <div className="grid gap-6 lg:grid-cols-3 lg:gap-12 max-w-6xl mx-auto">
+            <Card className="bg-white border-none shadow-md transform hover:scale-105 transition-transform duration-300">
               <CardContent className="p-6">
-                <div className="flex items-center space-x-4 mb-4">
+                <div className="flex flex-col items-center space-y-4 mb-4">
                   <Image
                     src="/testimonial-1.jpg"
-                    alt="Sarah Johnson"
-                    width={48}
-                    height={48}
-                    className="rounded-full h-12 w-12 object-cover"
+                    alt="Elementary Student"
+                    width={120}
+                    height={120}
+                    className="rounded-full h-24 w-24 object-cover border-4 border-sun"
                   />
-                  <div>
-                    <p className="font-medium text-navy">Sarah Johnson</p>
-                    <p className="text-sm text-gray-500">Parent</p>
+                  <div className="text-center">
+                    <p className="font-medium text-navy">Emma's Classroom</p>
+                    <p className="text-sm text-gray-500">Elementary School</p>
                   </div>
                 </div>
-                <p className="text-gray-700">
-                  "Being able to directly support my child's classroom has been incredible. Beyond Measure
-                  makes it so easy to see exactly where my donation goes and the impact it has."
+                <p className="text-gray-700 text-center">
+                  "The new science equipment has made learning so much fun! We get to do real experiments now instead of just reading about them in books."
                 </p>
               </CardContent>
             </Card>
-            <Card className="bg-white border-none shadow-md">
+            <Card className="bg-white border-none shadow-md transform hover:scale-105 transition-transform duration-300">
               <CardContent className="p-6">
-                <div className="flex items-center space-x-4 mb-4">
+                <div className="flex flex-col items-center space-y-4 mb-4">
                   <Image
                     src="/testimonial-2.jpg"
-                    alt="Michael Rodriguez"
-                    width={48}
-                    height={48}
-                    className="rounded-full h-12 w-12 object-cover"
+                    alt="Student Group Project"
+                    width={120}
+                    height={120}
+                    className="rounded-full h-24 w-24 object-cover border-4 border-sun"
                   />
-                  <div>
-                    <p className="font-medium text-navy">Michael Rodriguez</p>
-                    <p className="text-sm text-gray-500">School Administrator</p>
+                  <div className="text-center">
+                    <p className="font-medium text-navy">Westlake High</p>
+                    <p className="text-sm text-gray-500">STEM Program</p>
                   </div>
                 </div>
-                <p className="text-gray-700">
-                  "Beyond Measure has transformed how our teachers access resources. The platform is intuitive,
-                  transparent, and has helped bring innovative projects to life that would otherwise go unfunded."
+                <p className="text-gray-700 text-center">
+                  "Our robotics team wouldn't exist without Beyond Measure. The funding helped us purchase equipment that's sparked interest in engineering careers."
                 </p>
               </CardContent>
             </Card>
-            <Card className="bg-white border-none shadow-md">
+            <Card className="bg-white border-none shadow-md transform hover:scale-105 transition-transform duration-300">
               <CardContent className="p-6">
-                <div className="flex items-center space-x-4 mb-4">
+                <div className="flex flex-col items-center space-y-4 mb-4">
                   <Image
                     src="/testimonial-3.jpg"
-                    alt="Jennifer Wilson"
-                    width={48}
-                    height={48}
-                    className="rounded-full h-12 w-12 object-cover"
+                    alt="Creative Classroom"
+                    width={120}
+                    height={120}
+                    className="rounded-full h-24 w-24 object-cover border-4 border-sun"
                   />
-                  <div>
-                    <p className="font-medium text-navy">Jennifer Wilson</p>
-                    <p className="text-sm text-gray-500">Teacher</p>
+                  <div className="text-center">
+                    <p className="font-medium text-navy">Creative Arts Academy</p>
+                    <p className="text-sm text-gray-500">Music Department</p>
                   </div>
                 </div>
-                <p className="text-gray-700">
-                  "I was able to fund a class set of advanced science equipment in just two weeks. The
-                  support from the community has been overwhelming, and my students now have experiences
-                  they never would have had otherwise."
+                <p className="text-gray-700 text-center">
+                  "The instruments we received have transformed our music program. Students who never had access to quality instruments are now discovering their talents."
                 </p>
               </CardContent>
             </Card>
