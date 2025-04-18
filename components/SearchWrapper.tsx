@@ -8,10 +8,10 @@ function SearchContent() {
   return <SearchProjects />;
 }
 
-export default function SearchWrapper({ variant, className }: { variant?: 'default' | 'compact', className?: string }) {
+export default function SearchWrapper({ variant, className, alignment = 'default' }: { variant?: 'default' | 'compact', className?: string, alignment?: 'default' | 'left' }) {
   return (
     <Suspense fallback={
-      <div className="max-w-3xl mx-auto relative">
+      <div className={`max-w-3xl ${alignment === 'left' ? 'pl-0 ml-0' : 'mx-auto'} relative`}>
         <div className="bg-white rounded-full shadow-lg pl-5 pr-5 py-3 flex items-center gap-3 flex-wrap md:flex-nowrap">
           <div className="text-sky flex-shrink-0">
             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>

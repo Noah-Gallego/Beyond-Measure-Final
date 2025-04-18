@@ -259,28 +259,28 @@ function McpSupabaseInnerContent({ initialProjectId }: { initialProjectId: strin
       
       <div className="mb-6">
         <h2 className="text-xl font-semibold mb-3">Organizations</h2>
-        <button
+            <button
           className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded mr-2"
-          onClick={listOrganizations}
-          disabled={loading.listOrgs}
-        >
-          {loading.listOrgs ? 'Loading...' : 'List Organizations'}
-        </button>
-        
-        {organizations.length > 0 && (
-          <div className="mt-3">
-            <select 
-              className="border p-2 rounded"
-              value={selectedOrg || ''}
-              onChange={(e) => setSelectedOrg(e.target.value)}
+              onClick={listOrganizations}
+              disabled={loading.listOrgs}
             >
-              <option value="">Select an organization</option>
-              {organizations.map((org) => (
-                <option key={org.id} value={org.id}>
-                  {org.name}
-                </option>
-              ))}
-            </select>
+              {loading.listOrgs ? 'Loading...' : 'List Organizations'}
+            </button>
+            
+            {organizations.length > 0 && (
+          <div className="mt-3">
+                <select
+              className="border p-2 rounded"
+                  value={selectedOrg || ''}
+                  onChange={(e) => setSelectedOrg(e.target.value)}
+                >
+                  <option value="">Select an organization</option>
+                  {organizations.map((org) => (
+                    <option key={org.id} value={org.id}>
+                      {org.name}
+                    </option>
+                  ))}
+                </select>
             
             <button
               className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded ml-2"
@@ -292,35 +292,35 @@ function McpSupabaseInnerContent({ initialProjectId }: { initialProjectId: strin
           </div>
         )}
       </div>
-      
+            
       <div className="mb-6">
         <h2 className="text-xl font-semibold mb-3">Projects</h2>
-        <button
+            <button
           className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
-          onClick={listProjects}
-          disabled={loading.listProjects}
-        >
-          {loading.listProjects ? 'Loading...' : 'List Projects'}
-        </button>
-        
-        {projects.length > 0 && (
-          <div className="mt-3">
-            <select 
-              className="border p-2 rounded"
-              value={selectedProject || ''}
-              onChange={(e) => setSelectedProject(e.target.value)}
+              onClick={listProjects}
+              disabled={loading.listProjects}
             >
-              <option value="">Select a project</option>
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-      </div>
-      
+              {loading.listProjects ? 'Loading...' : 'List Projects'}
+            </button>
+            
+            {projects.length > 0 && (
+          <div className="mt-3">
+                <select
+              className="border p-2 rounded"
+                  value={selectedProject || ''}
+                  onChange={(e) => setSelectedProject(e.target.value)}
+                >
+                  <option value="">Select a project</option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+        </div>
+        
       {selectedProject && (
         <div className="mb-6">
           <h2 className="text-xl font-semibold mb-3">Tables</h2>
@@ -340,9 +340,9 @@ function McpSupabaseInnerContent({ initialProjectId }: { initialProjectId: strin
             >
               {loading.createTables ? 'Creating...' : 'Create Tables'}
             </button>
-          </div>
-          
-          {tables.length > 0 && (
+      </div>
+      
+      {tables.length > 0 && (
             <div className="mt-4 bg-gray-100 p-4 rounded">
               <h3 className="font-semibold mb-2">Existing Tables</h3>
               <ul className="list-disc pl-5">
@@ -350,7 +350,7 @@ function McpSupabaseInnerContent({ initialProjectId }: { initialProjectId: strin
                   <li key={index}>{table.schema}.{table.name}</li>
                 ))}
               </ul>
-            </div>
+          </div>
           )}
         </div>
       )}
@@ -372,8 +372,8 @@ function McpSupabaseInnerContent({ initialProjectId }: { initialProjectId: strin
 // Loading component for Suspense
 function McpSupabaseLoading() {
   return (
-    <div className="container mx-auto py-10 px-4">
-      <h1 className="text-3xl font-bold mb-6">MCP Supabase Tools</h1>
+      <div className="container mx-auto py-10 px-4">
+        <h1 className="text-3xl font-bold mb-6">MCP Supabase Tools</h1>
       <div className="animate-pulse">
         <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
         <div className="h-4 bg-gray-200 rounded w-1/2 mb-8"></div>

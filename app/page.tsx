@@ -45,17 +45,25 @@ function ClientHomeWrapper() {
                 </p>
               </div>
               
-              {/* Placeholder for search component while loading */}
-              <div className="mt-4 mb-6">
-                <div className="max-w-3xl mx-auto relative">
-                  <div className="bg-white rounded-full shadow-lg pl-5 pr-5 py-3 flex items-center gap-3 flex-wrap md:flex-nowrap">
-                    <div className="text-sky flex-shrink-0">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+              {/* Left-aligned search wrapper - perfectly aligned with text */}
+              <div className="mt-4 mb-6 pl-0">
+                <Suspense fallback={
+                  <div className="w-full max-w-3xl pl-0">
+                    <div className="bg-white rounded-full shadow-lg pl-5 pr-5 py-3 flex items-center gap-3 flex-wrap md:flex-nowrap">
+                      <div className="text-sky flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+                      </div>
+                      <div className="flex-1 min-w-0 text-navy opacity-60 truncate">Find a project to fund now</div>
+                      <div className="rounded-full bg-navy text-white px-4 py-2 font-medium ml-auto whitespace-nowrap flex-shrink-0">Fund Now</div>
                     </div>
-                    <div className="flex-1 min-w-0 text-navy opacity-60 truncate">Find a project to fund now</div>
-                    <div className="rounded-full bg-navy text-white px-4 py-2 font-medium ml-auto whitespace-nowrap flex-shrink-0">Fund Now</div>
                   </div>
-                </div>
+                }>
+                  <ClientOnly>
+                    <div className="w-full max-w-3xl pl-0">
+                      <SearchWrapper alignment="left" />
+                    </div>
+                  </ClientOnly>
+                </Suspense>
               </div>
             </div>
             <div className="flex items-center justify-center">
@@ -92,46 +100,6 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
   if (!isMounted) {
     return (
       <>
-        {/* Modern top banner */}
-        <div className="w-full bg-gradient-to-r from-navy via-sky to-sun py-3 px-4 text-white flex justify-between items-center sticky top-0 z-50 shadow-md">
-          <Link href="/" className="flex items-center gap-2">
-            <Image
-              src="/new-logo.jpg"
-              alt="Beyond Measure"
-              width={40}
-              height={40}
-              className="h-10 w-auto rounded-md border-2 border-white shadow-sm"
-            />
-            <span className="font-bold text-lg tracking-tight">Beyond Measure</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/about" className="hover:text-sun transition-colors text-sm md:text-base hidden md:inline-block">
-              About Us
-            </Link>
-            <Link href="/projects" className="hover:text-sun transition-colors text-sm md:text-base hidden md:inline-block">
-              Projects
-            </Link>
-            <Link href="/contact" className="hover:text-sun transition-colors text-sm md:text-base hidden md:inline-block">
-              Contact
-            </Link>
-            <div className="flex items-center gap-2">
-              <Button
-                onClick={() => setLoginOpen(true)}
-                variant="outline"
-                className="bg-transparent text-white border-white hover:bg-white/20 text-sm h-8 px-3"
-              >
-                Log in
-              </Button>
-              <Button
-                onClick={() => setLoginOpen(true)}
-                className="bg-sun text-navy hover:bg-sun/90 text-sm h-8 px-3"
-              >
-                Sign up
-              </Button>
-            </div>
-          </div>
-        </div>
-
         {/* Hero Section - Simplified for SSR */}
         <section
           id="hero"
@@ -152,17 +120,25 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
                   </p>
                 </div>
                 
-                {/* Add placeholder for search component */}
-                <div className="mt-4 mb-6">
-                  <div className="max-w-3xl mx-auto relative">
-                    <div className="bg-white rounded-full shadow-lg pl-5 pr-5 py-3 flex items-center gap-3 flex-wrap md:flex-nowrap">
-                      <div className="text-sky flex-shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+                {/* Left-aligned search wrapper - perfectly aligned with text */}
+                <div className="mt-4 mb-6 pl-0">
+                  <Suspense fallback={
+                    <div className="w-full max-w-3xl pl-0">
+                      <div className="bg-white rounded-full shadow-lg pl-5 pr-5 py-3 flex items-center gap-3 flex-wrap md:flex-nowrap">
+                        <div className="text-sky flex-shrink-0">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+                        </div>
+                        <div className="flex-1 min-w-0 text-navy opacity-60 truncate">Find a project to fund now</div>
+                        <button className="rounded-full bg-navy text-white px-4 py-2 font-medium ml-auto whitespace-nowrap flex-shrink-0">Fund Now</button>
                       </div>
-                      <div className="flex-1 min-w-0 text-navy opacity-60 truncate">Find a project to fund now</div>
-                      <button className="rounded-full bg-navy text-white px-4 py-2 font-medium ml-auto whitespace-nowrap flex-shrink-0">Fund Now</button>
                     </div>
-                  </div>
+                  }>
+                      <ClientOnly>
+                        <div className="w-full max-w-3xl pl-0">
+                          <SearchWrapper alignment="left" />
+                        </div>
+                      </ClientOnly>
+                  </Suspense>
                 </div>
               </div>
               <div className="flex items-center justify-center">
@@ -177,46 +153,6 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
 
   return (
     <>
-      {/* Modern top banner */}
-      <div className="w-full bg-gradient-to-r from-navy via-sky to-sun py-3 px-4 text-white flex justify-between items-center sticky top-0 z-50 shadow-md">
-        <Link href="/" className="flex items-center gap-2">
-          <Image
-            src="/new-logo.jpg"
-            alt="Beyond Measure"
-            width={40}
-            height={40}
-            className="h-10 w-auto rounded-md border-2 border-white shadow-sm"
-          />
-          <span className="font-bold text-lg tracking-tight">Beyond Measure</span>
-        </Link>
-        <div className="flex items-center gap-4">
-          <Link href="/about" className="hover:text-sun transition-colors text-sm md:text-base hidden md:inline-block">
-            About Us
-          </Link>
-          <Link href="/projects" className="hover:text-sun transition-colors text-sm md:text-base hidden md:inline-block">
-            Projects
-          </Link>
-          <Link href="/contact" className="hover:text-sun transition-colors text-sm md:text-base hidden md:inline-block">
-            Contact
-          </Link>
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={() => setLoginOpen(true)}
-              variant="outline"
-              className="bg-transparent text-white border-white hover:bg-white/20 text-sm h-8 px-3"
-            >
-              Log in
-            </Button>
-            <Button
-              onClick={() => setLoginOpen(true)}
-              className="bg-sun text-navy hover:bg-sun/90 text-sm h-8 px-3"
-            >
-              Sign up
-            </Button>
-          </div>
-        </div>
-      </div>
-
       {/* Hero Section */}
       <section
         id="hero"
@@ -237,10 +173,10 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
                 </p>
               </div>
               
-              {/* Left-aligned search wrapper */}
-              <div className="mt-4 mb-6 ml-0">
+              {/* Left-aligned search wrapper - perfectly aligned with text */}
+              <div className="mt-4 mb-6 pl-0">
                 <Suspense fallback={
-                  <div className="max-w-3xl relative">
+                  <div className="w-full max-w-3xl pl-0">
                     <div className="bg-white rounded-full shadow-lg pl-5 pr-5 py-3 flex items-center gap-3 flex-wrap md:flex-nowrap">
                       <div className="text-sky flex-shrink-0">
                         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
@@ -251,8 +187,8 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
                   </div>
                 }>
                   <ClientOnly>
-                    <div className="max-w-3xl">
-                      <SearchWrapper />
+                    <div className="w-full max-w-3xl pl-0">
+                      <SearchWrapper alignment="left" />
                     </div>
                   </ClientOnly>
                 </Suspense>
@@ -265,9 +201,9 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
                 <Button
                   asChild
                   variant="outline"
-                  className="rounded-full border-navy text-navy hover:bg-gray-100 px-6"
+                  className="rounded-full border-[#E96951] text-[#E96951] hover:bg-[#E96951]/10 px-6"
                 >
-                  <Link href="/projects/create">Submit a Project</Link>
+                  <Link href="/projects/create">Get Funded Now</Link>
                 </Button>
               </div>
               <div className="flex flex-col sm:flex-row gap-6 mt-8">
@@ -287,7 +223,7 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
             </div>
             <div className="flex items-center justify-center">
               <Image
-                src="/classroom3.jpg"
+                src="/images/classroom-kids.jpg"
                 alt="Students in classroom"
                 width={550}
                 height={550}
@@ -326,8 +262,8 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
               <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
                 <div className="aspect-video overflow-hidden rounded-lg mb-4">
                   <Image
-                    src="/classroom1.jpg"
-                    alt="Teacher creating a project"
+                    src="/images/student-chalkboard.jpg"
+                    alt="Student with chalkboard"
                     width={400}
                     height={225}
                     className="w-full h-full object-cover"
@@ -351,8 +287,8 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
               <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
                 <div className="aspect-video overflow-hidden rounded-lg mb-4">
                   <Image
-                    src="/classroom2.jpg"
-                    alt="Donors funding a project"
+                    src="/images/student-studying.jpg"
+                    alt="Student studying"
                     width={400}
                     height={225}
                     className="w-full h-full object-cover"
@@ -376,8 +312,8 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
               <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
                 <div className="aspect-video overflow-hidden rounded-lg mb-4">
                   <Image
-                    src="/classroom3.jpg"
-                    alt="Students benefiting from the project"
+                    src="/images/student-smiling.jpg"
+                    alt="Student smiling"
                     width={400}
                     height={225}
                     className="w-full h-full object-cover"
@@ -394,7 +330,7 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
           <div className="flex justify-center mt-12">
             <Button
               asChild
-              className="bg-navy text-white hover:bg-navy/90 px-8 py-6 rounded-full text-lg"
+              className="bg-[#E96951] text-white hover:bg-[#E96951]/90 px-8 py-6 rounded-full text-lg"
             >
               <Link href="/projects/create">Get Funded Now!</Link>
             </Button>
@@ -418,8 +354,8 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
               <CardContent className="p-6">
                 <div className="flex flex-col items-center space-y-4 mb-4">
                   <Image
-                    src="/teacher1.jpg"
-                    alt="Elementary Student"
+                    src="/images/girl-student.jpg"
+                    alt="Elementary School Student"
                     width={120}
                     height={120}
                     className="rounded-full h-24 w-24 object-cover border-4 border-sun"
@@ -438,8 +374,8 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
               <CardContent className="p-6">
                 <div className="flex flex-col items-center space-y-4 mb-4">
                   <Image
-                    src="/testimonial-3.jpg"
-                    alt="Student Group Project"
+                    src="/images/boy-student.jpg"
+                    alt="Student from STEM Program"
                     width={120}
                     height={120}
                     className="rounded-full h-24 w-24 object-cover border-4 border-sun"
@@ -458,8 +394,8 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
               <CardContent className="p-6">
                 <div className="flex flex-col items-center space-y-4 mb-4">
                   <Image
-                    src="/teacher2.jpg"
-                    alt="Creative Classroom"
+                    src="/images/teacher-student.jpg"
+                    alt="Music Program Students"
                     width={120}
                     height={120}
                     className="rounded-full h-24 w-24 object-cover border-4 border-sun"
@@ -483,7 +419,7 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
         <div className="container px-4 md:px-6">
           <div className="flex flex-col items-center justify-center space-y-4 text-center">
             <div className="space-y-2">
-              <div className="inline-flex items-center rounded-full border border-[#3AB5E9] bg-[#3AB5E9]/10 px-3 py-1 text-sm text-[#3AB5E9]">
+              <div className="inline-flex items-center rounded-full border border-[#E96951] bg-[#E96951]/10 px-3 py-1 text-sm text-[#E96951]">
                 About Us
               </div>
               <h2 className="text-3xl font-normal tracking-tight text-[#0E5D7F] sm:text-4xl md:text-5xl">Our Story</h2>
@@ -510,12 +446,13 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
                 </Button>
               </div>
             </div>
-            <div className="flex items-center justify-center">
-              <div className="relative h-[400px] md:h-[500px] rounded-xl overflow-hidden">
+            <div className="flex items-center justify-center order-first md:order-last mb-8 md:mb-0">
+              <div className="relative w-full h-[300px] md:h-[400px] rounded-xl overflow-hidden shadow-xl border border-gray-100">
                 <Image
-                  src="/about-classroom.jpg"
-                  alt="Students collaborating"
+                  src="/images/classroom-teacher.jpg"
+                  alt="Teacher helping students in classroom"
                   fill
+                  priority
                   className="object-cover"
                 />
               </div>
@@ -561,64 +498,6 @@ function SuspendedHomeContent({ loginOpen, setLoginOpen }: { loginOpen: boolean,
                   </CardContent>
                 </Card>
               ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Founders Section */}
-      <section id="founders" className="bg-white py-16">
-        <div className="container px-4 md:px-6">
-          <div className="flex flex-col items-center justify-center space-y-4 text-center mb-12">
-            <div className="space-y-2">
-              <h2 className="text-3xl font-normal tracking-tight sm:text-4xl md:text-5xl text-navy">Meet Our Founders</h2>
-              <p className="max-w-[900px] text-navy/80 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed font-light">
-                Passionate educators dedicated to transforming classroom funding
-              </p>
-            </div>
-          </div>
-          
-          <div className="grid gap-8 md:grid-cols-3 max-w-5xl mx-auto">
-            <div className="flex flex-col items-center">
-              <div className="mb-4 relative h-64 w-64 overflow-hidden rounded-xl">
-                <Image
-                  src="/founder1.jpg"
-                  alt="John-Paul Lake"
-                  fill
-                  className="object-cover"
-                />
-              </div>
-              <h3 className="text-xl font-semibold text-navy">John-Paul Lake</h3>
-              <p className="text-sky font-medium">Treasurer</p>
-              <p className="text-gray-600 text-center mt-2">Former educator with a passion for innovative teaching approaches and equal educational opportunities.</p>
-            </div>
-            
-            <div className="flex flex-col items-center">
-              <div className="mb-4 relative h-64 w-64 overflow-hidden rounded-xl">
-                <Image
-                  src="/founder2.jpg"
-                  alt="Ingrid Lake"
-                  fill
-                  className="object-cover"
-                />
-              </div>
-              <h3 className="text-xl font-semibold text-navy">Ingrid Lake</h3>
-              <p className="text-sky font-medium">President</p>
-              <p className="text-gray-600 text-center mt-2">Former school administrator with expertise in educational resource management and program development.</p>
-            </div>
-            
-            <div className="flex flex-col items-center">
-              <div className="mb-4 relative h-64 w-64 overflow-hidden rounded-xl">
-                <Image
-                  src="/founder3.jpg"
-                  alt="Danielle Patterson"
-                  fill
-                  className="object-cover"
-                />
-              </div>
-              <h3 className="text-xl font-semibold text-navy">Danielle Patterson</h3>
-              <p className="text-sky font-medium">Director</p>
-              <p className="text-gray-600 text-center mt-2">Educational consultant with over 15 years of experience in classroom innovation and technology integration.</p>
             </div>
           </div>
         </div>

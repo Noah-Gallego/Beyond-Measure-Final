@@ -9,15 +9,16 @@ import { Search } from 'lucide-react';
 interface SearchProjectsProps {
   variant?: 'default' | 'compact';
   className?: string;
+  alignment?: 'default' | 'left';
 }
 
 // Loading fallback for search input
-function SearchInputLoading({ variant = 'default', className = '' }: SearchProjectsProps) {
+function SearchInputLoading({ variant = 'default', className = '', alignment = 'default' }: SearchProjectsProps) {
   return (
     <div 
       className={`relative flex items-center ${className} ${
-        variant === 'compact' ? 'w-full' : 'w-full max-w-xl mx-auto'
-      }`}
+        variant === 'compact' ? 'w-full' : 'w-full max-w-xl'
+      } ${alignment === 'left' ? 'pl-0 ml-0' : 'mx-auto'}`}
     >
       <div className={`w-full ${
         variant === 'compact' ? 'h-9' : 'h-11'
@@ -27,7 +28,7 @@ function SearchInputLoading({ variant = 'default', className = '' }: SearchProje
 }
 
 // Inner component that safely uses useSearchParams
-function SearchProjectsContent({ variant = 'default', className = '' }: SearchProjectsProps) {
+function SearchProjectsContent({ variant = 'default', className = '', alignment = 'default' }: SearchProjectsProps) {
   // Dynamic import to ensure proper Suspense handling
   const nextNavigation = require('next/navigation');
   const searchParams = nextNavigation.useSearchParams();
@@ -57,8 +58,8 @@ function SearchProjectsContent({ variant = 'default', className = '' }: SearchPr
     <form 
       onSubmit={handleSearch} 
       className={`relative flex items-center ${className} ${
-        variant === 'compact' ? 'w-full' : 'w-full max-w-xl mx-auto'
-      }`}
+        variant === 'compact' ? 'w-full' : 'w-full max-w-xl'
+      } ${alignment === 'left' ? 'pl-0 ml-0' : 'mx-auto'}`}
     >
       <Input
         type="text"
