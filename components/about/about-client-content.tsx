@@ -36,16 +36,16 @@ export function AboutClientContent() {
                   Our Story
                 </div>
                 <h2 className="text-3xl font-bold tracking-tighter text-navy sm:text-4xl">
-                  Founded by Educators, for Educators
+                  Founded for Community Impact
                 </h2>
                 <p className="text-muted-foreground">
-                  BeyondMeasure emerged from our passion to support dedicated teachers who often fund classroom resources out of their own pockets. Founded in 2018 by a team of former educators who intimately understand classroom needs, our platform connects teachers with donors who want to make a real difference in education.
+                  The SeedCore Foundation emerged from a passion to support community development and entrepreneurship in Bakersfield, California. Founded by John-Paul and Ingrid Lake, SeedCore aims to create meaningful impact with the resources entrusted to us while building a stronger, more vibrant community.
                 </p>
                 <p className="text-muted-foreground">
-                  What began as a small initiative has grown into a nationwide platform that has funded over 15,000 classroom projects, benefiting more than 500,000 students. Through our crowdfunding platform, we've helped teachers access essential resources that traditional school budgets couldn't cover, from basic supplies to innovative technology.
+                  What began as a personal mission to responsibly steward finances and set an example for the next generation has grown into a foundation focused on creating positive change throughout Kern County. Through strategic partnerships and targeted initiatives, we're fostering entrepreneurship-led economic development in our region.
                 </p>
                 <p className="text-muted-foreground">
-                  Every project funded represents an educator's vision brought to life and students given new opportunities to learn and grow. We believe that when communities invest directly in classrooms, everyone benefits.
+                  Every initiative we support represents our vision for a thriving community where entrepreneurs have the resources they need to succeed. We believe that when we invest directly in our community, everyone benefits from increased opportunity and prosperity.
                 </p>
               </div>
             </div>
@@ -79,33 +79,33 @@ export function AboutClientContent() {
           <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 py-12 md:grid-cols-2 lg:grid-cols-3">
             {[
               {
-                title: "Educational Equity",
-                description: "We believe every student deserves access to quality educational resources, regardless of their school's funding or location.",
+                title: "Community Development",
+                description: "We believe in strengthening our community by supporting initiatives that foster sustainable economic growth and opportunity for all.",
                 color: "border-sky/20 bg-sky/5",
               },
               {
-                title: "Teacher Empowerment",
-                description: "We champion teachers' creativity and initiative, providing them the platform to bring their classroom visions to life.",
+                title: "Entrepreneurship",
+                description: "We champion innovation and entrepreneurial spirit, providing resources and support to help new businesses thrive in our region.",
                 color: "border-coral/20 bg-coral/5",
               },
               {
-                title: "Community Impact",
-                description: "We connect caring donors with classrooms to create meaningful change in education that ripples through communities.",
+                title: "Strategic Partnership",
+                description: "We connect resources with needs through thoughtful partnerships that create meaningful change in our community.",
                 color: "border-sun/20 bg-sun/5",
               },
               {
-                title: "Transparency",
-                description: "We believe in complete transparency in how funds are used, ensuring donors see the direct impact of their contributions.",
+                title: "Integrity",
+                description: "We believe in complete transparency and responsible stewardship of the resources entrusted to us.",
                 color: "border-sun-light/20 bg-sun-light/5",
               },
               {
-                title: "Innovation",
-                description: "We support creative teaching approaches that engage students and promote deeper learning experiences.",
+                title: "Family Legacy",
+                description: "We are committed to setting an example of giving and community leadership for future generations.",
                 color: "border-navy/20 bg-navy/5",
               },
               {
-                title: "Accessibility",
-                description: "We make fundraising easy and accessible for all teachers, regardless of technical experience or grant-writing skills.",
+                title: "Local Focus",
+                description: "We prioritize making an impact in Kern County, focusing our efforts where we can create the most meaningful change.",
                 color: "border-sky/20 bg-sky/5",
               },
             ].map((value, index) => (
@@ -131,38 +131,32 @@ export function AboutClientContent() {
                 Our Team
               </div>
               <h2 className="text-3xl font-bold tracking-tighter text-navy sm:text-4xl">
-                Meet the People Behind BeyondMeasure
+                Meet the People Behind SeedCore
               </h2>
               <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl">
-                Our diverse team brings together expertise in education, fundraising, and technology.
+                Our leadership team brings together expertise in business, community development, and entrepreneurship.
               </p>
             </div>
           </div>
-          <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 py-12 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 py-12 sm:grid-cols-2 md:grid-cols-3">
             {[
               {
-                name: "Dr. Elena Rodriguez",
-                role: "Founder & CEO",
-                bio: "Former elementary school teacher with a passion for ensuring all classrooms have the resources they need.",
+                name: "John-Paul Lake",
+                role: "Treasurer & Co-Founder",
+                bio: "John-Paul Lake is the Treasurer and Co-Founder of the SeedCore Foundation. He is a community and business leader based in Bakersfield, California. Beyond his role at SeedCore, he serves on the Board of Directors for the California State University, Bakersfield (CSUB) Foundation, contributing to initiatives that support entrepreneurship and education in the region.",
                 image: "/founder1.jpg",
               },
               {
-                name: "Marcus Chen",
-                role: "Chief Technology Officer",
-                bio: "Educational technologist focused on creating accessible platforms that connect donors with classrooms.",
+                name: "Ingrid Lake",
+                role: "President & Co-Founder",
+                bio: "Ingrid Lake is the President and Co-Founder of the SeedCore Foundation. Alongside her husband, John-Paul, she established the foundation to steward their finances effectively, set an example of giving and community-building for their children, and make a meaningful impact with the resources entrusted to them.",
                 image: "/founder2.jpg",
               },
               {
-                name: "Aisha Johnson",
-                role: "Director of Teacher Success",
-                bio: "Former high school science teacher dedicated to helping educators create compelling project campaigns.",
+                name: "Danielle Patterson",
+                role: "Director",
+                bio: "Danielle Patterson serves as the Director of the SeedCore Foundation. She oversees the Kern Initiative for Talent & Entrepreneurship (KITE), a private-public partnership focused on entrepreneurship-led economic development. With a background as a business owner, Danielle brings firsthand experience to her role, emphasizing the importance of communication and understanding the economic makeup of the county to support entrepreneurs effectively.",
                 image: "/founder3.jpg",
-              },
-              {
-                name: "David Park",
-                role: "Head of Donor Relations",
-                bio: "Nonprofit fundraising expert committed to building meaningful connections between donors and schools.",
-                image: "/teacher1.jpg",
               },
             ].map((member, index) => (
               <Card key={index} className="hover:shadow-lg transition-shadow">

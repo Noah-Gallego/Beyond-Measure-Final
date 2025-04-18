@@ -57,10 +57,10 @@ export function AboutInteractiveElements() {
               Our Impact
             </div>
             <h2 className="text-3xl font-bold tracking-tighter text-navy sm:text-4xl">
-              Making a Difference Together
+              Making a Difference in Kern County
             </h2>
             <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl">
-              Through our platform, we've helped thousands of teachers get the resources they need.
+              Through our initiatives and partnerships, we're fostering entrepreneurship and economic growth.
             </p>
           </div>
         </div>
@@ -68,22 +68,22 @@ export function AboutInteractiveElements() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           <Card className="bg-white/80 border-sky/10">
             <CardContent className="p-6">
-              <CountUpNumber end={15736} label="Projects Funded" />
+              <CountUpNumber end={78} label="Entrepreneurs Supported" />
             </CardContent>
           </Card>
           <Card className="bg-white/80 border-sun/10">
             <CardContent className="p-6">
-              <CountUpNumber end={523491} label="Students Impacted" />
+              <CountUpNumber end={12} label="Community Partnerships" />
             </CardContent>
           </Card>
           <Card className="bg-white/80 border-coral/10">
             <CardContent className="p-6">
-              <CountUpNumber end={8524} label="Teachers Supported" />
+              <CountUpNumber end={24} label="New Businesses Launched" />
             </CardContent>
           </Card>
           <Card className="bg-white/80 border-navy/10">
             <CardContent className="p-6">
-              <CountUpNumber end={4532761} label="Dollars Raised" />
+              <CountUpNumber end={2500000} label="Dollars Invested" />
             </CardContent>
           </Card>
         </div>

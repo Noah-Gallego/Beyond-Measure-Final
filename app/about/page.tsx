@@ -10,10 +10,10 @@ export default function AboutPage() {
           <div className="flex flex-col items-center justify-center space-y-4 text-center">
             <div className="space-y-2">
               <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl">
-                About BeyondMeasure
+                About SeedCore Foundation
               </h1>
               <p className="mx-auto max-w-[700px] text-sun md:text-xl">
-                Our mission is to connect passionate donors with teachers to create meaningful change in classrooms across the country.
+                Our mission is to foster entrepreneurship, economic development, and community growth in Kern County through strategic partnerships and targeted initiatives.
               </p>
             </div>
           </div>
