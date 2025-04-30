@@ -96,6 +96,16 @@ export default function TeacherNav() {
                 Create Project
               </Link>
               <Link
+                href="/teacher/profile"
+                className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                  isActive('/teacher/profile')
+                    ? 'text-white font-bold bg-white/25'
+                    : 'text-white font-medium hover:bg-white/25 hover:text-white'
+                }`}
+              >
+                Teacher Profile
+              </Link>
+              <Link
                 href="/profile"
                 className={`px-3 py-1 text-sm rounded-md transition-colors ${
                   pathname === '/profile'
@@ -103,7 +113,7 @@ export default function TeacherNav() {
                     : 'text-white font-medium hover:bg-white/25 hover:text-white'
                 }`}
               >
-                My Profile
+                Account
               </Link>
             </nav>
           </div>

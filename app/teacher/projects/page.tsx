@@ -6,12 +6,13 @@ import Link from 'next/link';
 import ProjectActions from '../../../components/ProjectActions';
 import { useAuth } from '@/components/AuthProvider';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ChevronLeft, Plus, BookOpen, ArrowRight, Edit, ExternalLink, School, MapPin, GraduationCap, Users, Calendar, FileText, Sparkles, Award, Target, Clock } from 'lucide-react';
+import { ChevronLeft, Plus, BookOpen, ArrowRight, Edit, ExternalLink, School, MapPin, GraduationCap, Users, Calendar, FileText, Sparkles, Award, Target, Clock, AlertTriangle, Home } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { useRouter } from 'next/navigation';
 
 type Project = {
   id: string;
@@ -384,16 +385,20 @@ function TeacherProjectsContent() {
     return (
       <div className="container mx-auto py-10">
         <div className="flex justify-center items-center min-h-[60vh]">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle className="text-xl font-bold text-red-600">Access Denied</CardTitle>
+          <Card className="w-full max-w-md overflow-hidden border-t-4 border-t-salmon shadow-md">
+            <CardHeader className="bg-gradient-to-r from-salmon-light to-navy-light">
+              <CardTitle className="text-xl font-bold text-navy flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-salmon" />
+                Access Denied
+              </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               <p className="text-gray-700 mb-4">{error || 'You do not have permission to access this page.'}</p>
             </CardContent>
-            <CardFooter>
+            <CardFooter className="pt-4 border-t">
               <Link href="/dashboard">
-                <Button variant="default">
+                <Button className="gap-2 bg-navy hover:bg-navy/90">
+                  <Home className="h-4 w-4" />
                   Return to Dashboard
                 </Button>
               </Link>
@@ -626,11 +631,60 @@ function TeacherProjectsLoading() {
   );
 }
 
-// Main export with Suspense boundary
+// Role check wrapper
+function RoleCheckWrapper() {
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
+  
+  useEffect(() => {
+    const checkUserRole = async () => {
+      if (isLoading) return;
+      
+      if (!user) {
+        // Not logged in, redirect to auth
+        router.push('/auth?redirect=/teacher/projects');
+        return;
+      }
+      
+      try {
+        // Import the helper to get user role
+        const { getUserRole } = await import('@/utils/role-helpers');
+        const role = await getUserRole(user);
+        
+        // If not a teacher, redirect based on role
+        if (role !== 'teacher') {
+          console.log('Non-teacher accessing teacher projects page. Redirecting...');
+          
+          if (role === 'admin') {
+            router.push('/admin/projects');
+          } else {
+            // Donors and other roles go to search page
+            router.push('/search');
+          }
+        }
+      } catch (error) {
+        console.error('Error checking user role:', error);
+      }
+    };
+    
+    checkUserRole();
+  }, [user, isLoading, router]);
+  
+  // Show loading state during auth check
+  if (isLoading || !user) {
+    return <TeacherProjectsLoading />;
+  }
+  
+  // Once we're authenticated and role check is handled by redirection in useEffect,
+  // render the actual content
+  return <TeacherProjectsContent />;
+}
+
+// Main export with Suspense
 export default function TeacherProjectsPage() {
   return (
     <Suspense fallback={<TeacherProjectsLoading />}>
-      <TeacherProjectsContent />
+      <RoleCheckWrapper />
     </Suspense>
   );
 } 

@@ -220,7 +220,7 @@ export default function TeacherDashboardContent() {
               </div>
             </Link>
             <Link 
-              href="/profile"
+              href="/teacher/profile"
               className="flex items-center p-4 bg-purple-50 dark:bg-purple-900/30 rounded-lg border border-purple-100 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors"
             >
               <div className="mr-4 bg-purple-100 dark:bg-purple-800 rounded-full p-2">
@@ -229,8 +229,8 @@ export default function TeacherDashboardContent() {
                 </svg>
               </div>
               <div>
-                <h3 className="font-medium text-gray-900 dark:text-white">My Profile</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Edit your profile information</p>
+                <h3 className="font-medium text-gray-900 dark:text-white">Teacher Profile</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Update your teacher information</p>
               </div>
             </Link>
           </div>

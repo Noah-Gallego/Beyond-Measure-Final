@@ -62,7 +62,7 @@ export default function ProfileAvatar({
   useEffect(() => {
     const interval = setInterval(() => {
       setRefreshTimestamp(Date.now());
-    }, 30000); // Refresh every 30 seconds
+    }, 5000); // Refresh every 5 seconds
     
     return () => clearInterval(interval);
   }, []);
@@ -207,7 +207,7 @@ export default function ProfileAvatar({
     <Avatar className={avatarClass}>
       {imgSrc && !imgError ? (
         <AvatarImage 
-          src={`${imgSrc}?t=${Date.now()}`}
+          src={`${imgSrc}?t=${refreshTimestamp}`}
           alt={`${firstName} ${lastName}`}
           onError={handleImageError}
           className="object-cover"

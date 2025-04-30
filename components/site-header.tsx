@@ -195,6 +195,17 @@ export function SiteHeader() {
                 Find Projects
               </Link>
               
+              {/* Teachers Link */}
+              <Link
+                href="/teachers"
+                className={cn(
+                  "inline-flex items-center justify-center whitespace-nowrap rounded-full text-sm font-medium transition-colors px-4 py-2",
+                  pathname === "/teachers" ? navButtonStyles.active : navButtonStyles.inactive,
+                )}
+              >
+                Our Teachers
+              </Link>
+              
               {sections
                 .filter((section) => section.id !== "hero" && section.id !== "about") // Filter out Home and About Us buttons
                 .map((section) => {

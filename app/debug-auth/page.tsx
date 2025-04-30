@@ -171,6 +171,12 @@ function DebugAuthContent() {
             >
               Fix Admin Role
             </a>
+            <a 
+              href="/fix-donor-role" 
+              className="px-4 py-2 bg-yellow-500 text-white rounded"
+            >
+              Fix Donor Role
+            </a>
           </div>
         </div>
       )}

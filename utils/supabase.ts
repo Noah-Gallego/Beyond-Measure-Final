@@ -213,35 +213,136 @@ export const removeFromWishlist = async (donorId: string, projectId: string) => 
       throw new Error('You must be logged in to remove from wishlist');
     }
     
-    // Check if item exists in wishlist
-    const { data: existingItem, error: checkError } = await supabase
-      .from('donor_wishlists')
-      .select('id')
-      .match({ donor_id: donorId, project_id: projectId })
-      .maybeSingle();
+    console.log('Removing from wishlist with donor ID and project ID:', { donorId, projectId });
+    
+    // First find the wishlist item ID since the delete_wishlist_item RPC needs it
+    try {
+      // Get the wishlist item ID
+      const { data: wishlistItem } = await supabase
+        .from('donor_wishlists')
+        .select('id')
+        .eq('donor_id', donorId)
+        .eq('project_id', projectId)
+        .maybeSingle();
       
-    if (checkError && checkError.code !== 'PGRST116') {
-      console.error('Error checking for existing wishlist item:', checkError);
-      // Continue anyway since we're trying to delete
+      if (wishlistItem && wishlistItem.id) {
+        console.log('Found wishlist item ID, attempting delete with RPC:', wishlistItem.id);
+        
+        // Try the RPC function which has SECURITY DEFINER privileges
+        try {
+          const { data: rpcResult, error: rpcError } = await supabase.rpc('delete_wishlist_item', {
+            p_wishlist_id: wishlistItem.id
+          });
+          
+          if (!rpcError) {
+            console.log('Successfully deleted wishlist item via RPC:', rpcResult);
+            
+            // Clear any cached data
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem(`wishlist_${authData.user.id}`);
+              localStorage.setItem('last_wishlist_fetch', Date.now().toString());
+            }
+            
+            return { success: true };
+          }
+          
+          console.error('RPC delete_wishlist_item failed:', rpcError);
+        } catch (rpcError) {
+          console.error('Exception in RPC delete_wishlist_item call:', rpcError);
+        }
+        
+        // Fall back to direct ID-based delete if RPC failed
+        const { error } = await supabase
+          .from('donor_wishlists')
+          .delete()
+          .eq('id', wishlistItem.id);
+        
+        if (!error) {
+          console.log('Successfully removed by ID');
+          
+          // Clear any cached data
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem(`wishlist_${authData.user.id}`);
+            localStorage.setItem('last_wishlist_fetch', Date.now().toString());
+          }
+          
+          return { success: true };
+        }
+      }
+    } catch (idLookupErr) {
+      console.error('Exception in ID lookup:', idLookupErr);
     }
     
-    // If item doesn't exist, just return success
-    if (!existingItem) {
-      return { success: true, message: 'Item was not in wishlist' };
+    // Try direct approach - just delete with the provided IDs
+    try {
+      const { error } = await supabase
+        .from('donor_wishlists')
+        .delete()
+        .eq('donor_id', donorId)
+        .eq('project_id', projectId);
+      
+      if (!error) {
+        console.log('Successfully removed from wishlist directly');
+        
+        // Clear any cached data
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem(`wishlist_${authData.user.id}`);
+          localStorage.setItem('last_wishlist_fetch', Date.now().toString());
+        }
+        
+        return { success: true };
+      }
+      
+      // If we got here, direct delete failed
+      console.log('Direct removal failed, trying toggle_project_wishlist RPC');
+    } catch (directDeleteErr) {
+      console.error('Exception in direct delete:', directDeleteErr);
     }
     
-    // Delete the wishlist item - RLS policies will handle permissions
-    const { data, error } = await supabase
-      .from('donor_wishlists')
-      .delete()
-      .match({ donor_id: donorId, project_id: projectId });
-    
-    if (error) {
-      console.error('Error removing from wishlist:', error);
-      throw error;
+    // Attempt with toggle_project_wishlist RPC function
+    try {
+      console.log('Attempting RPC toggle_project_wishlist for deletion');
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('toggle_project_wishlist', {
+        p_donor_id: donorId,
+        p_project_id: projectId
+      });
+      
+      if (!rpcError) {
+        console.log('Successfully removed via RPC toggle_project_wishlist');
+        
+        // Clear any cached data
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem(`wishlist_${authData.user.id}`);
+          localStorage.setItem('last_wishlist_fetch', Date.now().toString());
+        }
+        
+        return { success: true };
+      }
+      
+      console.error('RPC fallback failed:', rpcError);
+    } catch (rpcErr) {
+      console.error('Exception in RPC fallback:', rpcErr);
     }
     
-    return { success: true, data };
+    // Final check - if we got here but the item doesn't exist, consider it a success
+    try {
+      const { count } = await supabase
+        .from('donor_wishlists')
+        .select('*', { count: 'exact', head: true })
+        .eq('donor_id', donorId)
+        .eq('project_id', projectId);
+      
+      if (count === 0) {
+        console.log('Item not found in wishlist, considering it already deleted');
+        return { success: true, message: 'Item was not in wishlist' };
+      }
+    } catch (countErr) {
+      console.error('Exception in count check:', countErr);
+    }
+    
+    // If we got here, all deletion attempts failed
+    console.error('All deletion attempts failed');
+    return { success: false, error: 'Could not remove from wishlist after multiple attempts' };
   } catch (error: any) {
     console.error('Error removing from wishlist:', error.message);
     return { success: false, error: error.message };
@@ -546,28 +647,338 @@ export const createDonorProfile = async (userId: string, anonymousByDefault: boo
       
       // Store in localStorage
       safeLocalStorage.setItem(`donor_profile_${userId}`, JSON.stringify(newProfile));
-      
-      // Use the direct insert result
-      const directResult = newProfile;
-      
-      // After creating the profile, let's immediately try to retrieve it
-      const checkResult = await getDonorProfile(userId);
-      console.log('Immediate check after direct insert - getDonorProfile result:', JSON.stringify(checkResult, null, 2));
-      
-      return { success: true, donorProfile: directResult };
+      return { success: true, donorProfile: newProfile };
     }
     
-    // If RPC succeeded, store in localStorage
-    safeLocalStorage.setItem(`donor_profile_${userId}`, JSON.stringify(rpcData));
-    
-    // If RPC succeeded, continue with that result
-    const checkResult = await getDonorProfile(userId);
-    console.log('Immediate check after RPC - getDonorProfile result:', JSON.stringify(checkResult, null, 2));
+    // If we get here, the operation was successful
+    // Mark donor setup as completed in case it wasn't already
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`donor_setup_completed_${authData.user.id}`, 'true');
+    }
     
     return { success: true, donorProfile: rpcData };
   } catch (error: any) {
     console.error('Error creating donor profile:', error.message);
     return { success: false, error: error.message };
+  }
+};
+
+// Function to update the wishlist count in localStorage
+export const updateWishlistCount = (userId: string, count: number): void => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(`wishlist_count_${userId}`, count.toString());
+    console.log('Updated cached wishlist count to:', count);
+  }
+};
+
+// Add a direct function to remove a wishlist item by ID
+export const removeWishlistItem = async (wishlistId: string) => {
+  try {
+    console.log('Directly removing wishlist item by ID:', wishlistId);
+    
+    // Verify user is logged in
+    const { data: authData } = await supabase.auth.getUser();
+    
+    if (!authData?.user) {
+      throw new Error('You must be logged in to remove from wishlist');
+    }
+    
+    // First try to use the RPC function which has SECURITY DEFINER privileges
+    try {
+      console.log('Attempting to use delete_wishlist_item RPC function');
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('delete_wishlist_item', {
+        p_wishlist_id: wishlistId
+      });
+      
+      if (!rpcError) {
+        console.log('Successfully deleted wishlist item via RPC:', rpcResult);
+        
+        // Clear any cached data
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem(`wishlist_${authData.user.id}`);
+          localStorage.setItem('last_wishlist_fetch', Date.now().toString());
+        }
+        
+        return { success: true };
+      }
+      
+      console.error('RPC delete_wishlist_item failed:', rpcError);
+      // Fall back to direct methods
+    } catch (rpcError) {
+      console.error('Exception in RPC delete_wishlist_item call:', rpcError);
+      // Continue with direct methods
+    }
+    
+    // Now try the most direct approach - delete by ID only
+    try {
+      const { error } = await supabase
+        .from('donor_wishlists')
+        .delete()
+        .eq('id', wishlistId);
+      
+      if (!error) {
+        console.log('Successfully removed wishlist item directly by ID');
+        
+        // Clear any cached data
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem(`wishlist_${authData.user.id}`);
+          localStorage.setItem('last_wishlist_fetch', Date.now().toString());
+        }
+        
+        return { success: true };
+      }
+      
+      // If we got here, there was an error with the direct delete
+      console.log('Direct wishlist deletion failed, trying fallback approaches');
+    } catch (directDeleteErr) {
+      console.error('Exception in direct delete:', directDeleteErr);
+    }
+    
+    // If direct delete failed, get item details for more targeted deletion
+    const { data: itemData, error: itemError } = await supabase
+      .from('donor_wishlists')
+      .select('donor_id, project_id')
+      .eq('id', wishlistId)
+      .maybeSingle();
+      
+    if (itemError) {
+      console.error('Error getting wishlist item details:', itemError);
+      
+      // If the item doesn't exist, consider it a successful delete
+      if (itemError.code === 'PGRST116') {
+        return { success: true, message: 'Item already deleted' };
+      }
+    }
+    
+    // If we couldn't get the item details, try RPC function as fallback
+    if (!itemData) {
+      console.log('Could not find wishlist item, considering it already deleted');
+      return { success: true, message: 'Item not found' };
+    }
+    
+    // Try to remove using the RPC function which has higher privileges
+    try {
+      console.log('Attempting RPC toggle_project_wishlist for deletion');
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('toggle_project_wishlist', {
+        p_donor_id: itemData.donor_id,
+        p_project_id: itemData.project_id
+      });
+      
+      if (!rpcError) {
+        console.log('Successfully removed via RPC toggle_project_wishlist');
+        
+        // Clear any cached data
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem(`wishlist_${authData.user.id}`);
+          localStorage.setItem('last_wishlist_fetch', Date.now().toString());
+        }
+        
+        return { success: true };
+      }
+      
+      console.error('RPC fallback also failed:', rpcError);
+    } catch (rpcErr) {
+      console.error('Exception in RPC fallback:', rpcErr);
+    }
+    
+    // Final fallback - try with just the ID but force refresh from DB afterward
+    console.log('Attempting final fallback delete with just the ID');
+    const { error: finalError } = await supabase
+      .from('donor_wishlists')
+      .delete()
+      .eq('id', wishlistId);
+    
+    if (!finalError) {
+      console.log('Final fallback delete succeeded');
+      
+      // Clear any cached data
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(`wishlist_${authData.user.id}`);
+        localStorage.setItem('last_wishlist_fetch', Date.now().toString());
+      }
+      
+      return { success: true };
+    }
+    
+    // If all approaches failed, return error
+    console.error('All deletion approaches failed:', finalError);
+    return { success: false, error: 'Could not delete wishlist item after multiple attempts' };
+  } catch (error: any) {
+    console.error('Error in removeWishlistItem:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Simple direct function to delete a wishlist item
+export const deleteWishlistItem = async (wishlistId: string) => {
+  console.log('Directly deleting wishlist item with ID:', wishlistId);
+  
+  try {
+    // First try the RPC function which has SECURITY DEFINER privileges
+    try {
+      console.log('Attempting to use delete_wishlist_item RPC function');
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('delete_wishlist_item', {
+        p_wishlist_id: wishlistId
+      });
+      
+      if (!rpcError) {
+        console.log('Successfully deleted wishlist item via RPC:', rpcResult);
+        
+        // Clear any cached data to ensure fresh data on next load
+        if (typeof window !== 'undefined') {
+          const { data: authData } = await supabase.auth.getUser();
+          if (authData?.user) {
+            localStorage.removeItem(`wishlist_${authData.user.id}`);
+            localStorage.setItem('last_wishlist_fetch', Date.now().toString());
+          }
+        }
+        
+        return { success: true };
+      }
+      
+      console.error('RPC delete_wishlist_item failed:', rpcError);
+      // Fall back to direct method
+    } catch (rpcError) {
+      console.error('Exception in RPC delete_wishlist_item call:', rpcError);
+      // Continue with direct method
+    }
+    
+    // Fall back to direct delete approach
+    const { error } = await supabase
+      .from('donor_wishlists')
+      .delete()
+      .eq('id', wishlistId);
+    
+    if (error) {
+      console.error('Error deleting wishlist item:', error);
+      return { success: false, error: error.message };
+    }
+    
+    // Clear any cached data to ensure fresh data on next load
+    if (typeof window !== 'undefined') {
+      const { data: authData } = await supabase.auth.getUser();
+      if (authData?.user) {
+        localStorage.removeItem(`wishlist_${authData.user.id}`);
+        localStorage.setItem('last_wishlist_fetch', Date.now().toString());
+      }
+    }
+    
+    return { success: true };
+  } catch (error: any) {
+    console.error('Exception deleting wishlist item:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Create a simplified, reliable wishlist count function that matches the wishlist page's approach
+export const getWishlistCount = async (userId: string): Promise<number> => {
+  try {
+    console.log('Getting wishlist count for user:', userId);
+    
+    // Get user database ID first (exact same approach as wishlist page)
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('auth_id', userId)
+      .maybeSingle();
+    
+    if (userError) {
+      console.error('Error getting user data:', userError);
+      return 0;
+    }
+    
+    if (!userData) {
+      console.error('User not found in database, userId:', userId);
+      return 0;
+    }
+    
+    console.log('Found user record:', userData.id);
+    
+    // Get donor profile
+    const { data: donorData, error: donorError } = await supabase
+      .from('donor_profiles')
+      .select('id')
+      .eq('user_id', userData.id)
+      .maybeSingle();
+    
+    if (donorError && donorError.code !== 'PGRST116') {
+      console.error('Error getting donor profile:', donorError);
+      return 0;
+    }
+    
+    if (!donorData) {
+      console.log('No donor profile found for user:', userData.id);
+      return 0;
+    }
+    
+    console.log('Found donor profile:', donorData.id);
+    
+    // Direct count query - exactly like wishlist page
+    const { count, error: countError } = await supabase
+      .from('donor_wishlists')
+      .select('*', { count: 'exact', head: true })
+      .eq('donor_id', donorData.id);
+    
+    if (countError) {
+      console.error('Error counting wishlist items:', countError);
+      return 0;
+    }
+    
+    // Make sure count is a number - defensive programming
+    const actualCount = typeof count === 'number' ? count : 0;
+    console.log('Actual wishlist count from database is:', actualCount);
+    
+    // Cache the result for next time
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`wishlist_count_${userId}`, actualCount.toString());
+      console.log('Updated cached wishlist count to:', actualCount);
+    }
+    
+    return actualCount;
+  } catch (error) {
+    console.error('Error in getWishlistCount:', error);
+    return 0;
+  }
+};
+
+// Alternative approach for removing from wishlist that doesn't rely on RLS
+export const apiRemoveFromWishlist = async (donorId: string, projectId: string) => {
+  try {
+    // First verify the current user is logged in
+    const { data: authData } = await supabase.auth.getUser();
+    
+    if (!authData?.user) {
+      throw new Error('You must be logged in to remove from wishlist');
+    }
+    
+    // Make a POST request to a server API endpoint that can bypass RLS
+    const response = await fetch('/api/wishlist/remove', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId: authData.user.id,
+        donorId,
+        projectId
+      }),
+    });
+    
+    if (response.status === 404) {
+      // API endpoint doesn't exist - infrastructure issue
+      throw new Error('API endpoint not found');
+    }
+    
+    const result = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(result.error || 'Failed to remove from wishlist');
+    }
+    
+    return { success: true, data: result.data };
+  } catch (error: any) {
+    console.error('Error removing from wishlist via API:', error.message);
+    throw error; // Let the caller handle the error
   }
 };
 
@@ -611,44 +1022,3 @@ export const apiAddToWishlist = async (donorId: string, projectId: string) => {
     throw error; // Let the caller handle the error
   }
 };
-
-// Alternative approach for removing from wishlist that doesn't rely on RLS
-export const apiRemoveFromWishlist = async (donorId: string, projectId: string) => {
-  try {
-    // First verify the current user is logged in
-    const { data: authData } = await supabase.auth.getUser();
-    
-    if (!authData?.user) {
-      throw new Error('You must be logged in to remove from wishlist');
-    }
-    
-    // Make a POST request to a server API endpoint that can bypass RLS
-    const response = await fetch('/api/wishlist/remove', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        userId: authData.user.id,
-        donorId,
-        projectId
-      }),
-    });
-    
-    if (response.status === 404) {
-      // API endpoint doesn't exist - infrastructure issue
-      throw new Error('API endpoint not found');
-    }
-    
-    const result = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(result.error || 'Failed to remove from wishlist');
-    }
-    
-    return { success: true, data: result.data };
-  } catch (error: any) {
-    console.error('Error removing from wishlist via API:', error.message);
-    throw error; // Let the caller handle the error
-  }
-}; 

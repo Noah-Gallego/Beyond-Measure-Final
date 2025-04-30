@@ -282,12 +282,14 @@ export default function ProjectActions({
   return (
     <div className="mt-6 border-t border-gray-200 pt-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-4">
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">Status:</h3>
           {getStatusBadge()}
         </div>
         
-        {getActionButton()}
+        <div className="ml-6">
+          {getActionButton()}
+        </div>
       </div>
       
       {message && (

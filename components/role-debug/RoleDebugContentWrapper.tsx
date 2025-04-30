@@ -269,12 +269,20 @@ function RoleDebugContent() {
         >
           Go to Dashboard
         </button>
-        <button
-          onClick={() => window.location.reload()}
-          className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded"
-        >
-          Refresh Page
-        </button>
+        <div className="space-x-2">
+          <a
+            href="/fix-donor-role"
+            className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded inline-block"
+          >
+            Fix Donor Role
+          </a>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded"
+          >
+            Refresh Page
+          </button>
+        </div>
       </div>
     </div>
   );

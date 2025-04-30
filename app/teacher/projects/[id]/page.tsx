@@ -1,32 +1,85 @@
 'use client';
 
 import { ProjectDetail } from '../../../../components/ProjectDetail';
-import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { useAuth } from '../../../../components/AuthProvider';
+import { useState, useEffect } from 'react';
+import { supabase } from '../../../../utils/supabase';
 
 export default function TeacherProjectPage() {
   const params = useParams();
   const projectId = params.id as string;
+  const { user } = useAuth();
+  const [isProjectOwner, setIsProjectOwner] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  
+  // Check if the current user is the owner of this project
+  useEffect(() => {
+    async function checkProjectOwnership() {
+      if (!user) return;
+      
+      try {
+        // Get the user's role
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('role')
+          .eq('auth_id', user.id)
+          .single();
+          
+        if (!userError && userData) {
+          setUserRole(userData.role);
+        }
+        
+        // Check if the user is the owner of this project
+        if (projectId) {
+          const { data: projectData, error: projectError } = await supabase
+            .from('projects')
+            .select('teacher_id')
+            .eq('id', projectId)
+            .single();
+            
+          if (!projectError && projectData) {
+            const { data: teacherData, error: teacherError } = await supabase
+              .from('teacher_profiles')
+              .select('user_id')
+              .eq('id', projectData.teacher_id)
+              .single();
+              
+            if (!teacherError && teacherData) {
+              // Get the database user ID for the current auth user
+              const { data: currentUserData, error: currentUserError } = await supabase
+                .from('users')
+                .select('id')
+                .eq('auth_id', user.id)
+                .single();
+                
+              if (!currentUserError && currentUserData) {
+                // Check if the current user is the teacher of this project
+                setIsProjectOwner(teacherData.user_id === currentUserData.id);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error checking project ownership:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    checkProjectOwnership();
+  }, [user, projectId]);
+  
+  const isTeacher = userRole === 'teacher';
   
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="max-w-6xl mx-auto px-4">
-        <div className="mb-6">
-          <Link 
-            href="/teacher/projects" 
-            className="inline-flex items-center text-[#3AB5E9] hover:text-[#0E5D7F]"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
-            </svg>
-            Back to My Projects
-          </Link>
-        </div>
-        
         <ProjectDetail 
           projectId={projectId}
-          isTeacher={true}
-          allowEdit={true}
+          isTeacher={isTeacher}
+          allowEdit={isTeacher && isProjectOwner}
         />
       </div>
     </div>

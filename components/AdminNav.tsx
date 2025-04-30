@@ -63,6 +63,9 @@ export default function AdminNav() {
               <Link href="/admin/categories" className="px-3 py-1 text-sm rounded-md text-white font-bold hover:bg-white/25 hover:text-white transition-colors">
                 Manage Categories
               </Link>
+              <Link href="/admin/reports" className="px-3 py-1 text-sm rounded-md text-white font-bold hover:bg-white/25 hover:text-white transition-colors">
+                Reports
+              </Link>
               <Link href="/admin/dashboard" className="px-3 py-1 text-sm rounded-md text-white font-bold hover:bg-white/25 hover:text-white transition-colors">
                 Admin Dashboard
               </Link>

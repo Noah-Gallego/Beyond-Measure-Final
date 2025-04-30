@@ -1,9 +1,7 @@
-import { redirect } from 'next/navigation';
+import ProjectsRedirectClient from './client';
 
-// Use Next.js redirects for better performance
 export default function ProjectsRedirectPage() {
-  // Server-side redirect
-  redirect('/teacher/projects');
+  return <ProjectsRedirectClient />;
 }
 
 // Add metadata

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase, isProjectInWishlist, addToWishlist, removeFromWishlist, getDonorProfile, createDonorProfile } from '../utils/supabase';
 import Link from 'next/link';
 import ProjectActions from './ProjectActions';
@@ -77,7 +77,7 @@ const fetchTeacherImage = async (teacherId: string): Promise<string | null> => {
 };
 
 // Constants for debugging
-const DEBUG_IMAGES = true;
+const DEBUG_IMAGES = false;
 const SUPABASE_URL = 'https://efneocmdolkzdfhtqkpl.supabase.co';
 
 /**
@@ -180,7 +180,7 @@ export function ProjectDetail({ projectId, isTeacher = false, isAdmin = false, a
   const [isInWishlist, setIsInWishlist] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const [donorId, setDonorId] = useState<string | null>(null);
-  const { user } = useAuth();
+  const { user, userData } = useAuth();
   const [userRole, setUserRole] = useState<string | null>(null);
   const [showDonorSetup, setShowDonorSetup] = useState(false);
   const [creatingDonorProfile, setCreatingDonorProfile] = useState(false);
@@ -208,6 +208,86 @@ export function ProjectDetail({ projectId, isTeacher = false, isAdmin = false, a
     );
   };
 
+  // Function to determine the back link and text based on user role
+  const getBackLink = () => {
+    // If user is not authenticated, link to all projects
+    if (!user) {
+      return { href: "/projects", text: "Back to Projects" };
+    }
+    
+    // If user is a teacher, link to teacher dashboard
+    if (userData?.role === "teacher") {
+      return { href: "/teacher/projects", text: "Back to My Projects" };
+    }
+    
+    // If user is a donor, link to donor dashboard
+    if (userData?.role === "donor") {
+      return { href: "/donor/dashboard", text: "Back to My Dashboard" };
+    }
+    
+    // If user is an admin, link to admin projects
+    if (userData?.role === "admin") {
+      return { href: "/admin/projects", text: "Back to Projects" };
+    }
+    
+    // Default fallback
+    return { href: "/projects", text: "Back to Projects" };
+  };
+  
+  // Get the appropriate back link
+  const backLink = getBackLink();
+
+  // Update the handler function for more reliable navigation
+  const handleBackNavigation = () => {
+    // First try to use browser history to go back if possible
+    if (typeof window !== 'undefined' && window.history && window.history.length > 1) {
+      console.log('Using browser history for navigation');
+      router.back();
+      return;
+    }
+    
+    // If browser history isn't available, fall back to role-based navigation
+    if (userData) {
+      if (userData.role === 'teacher') {
+        console.log('Using userData role teacher for navigation');
+        router.push('/teacher/projects');
+        return;
+      }
+      
+      if (userData.role === 'admin') {
+        console.log('Using userData role admin for navigation');
+        router.push('/admin/projects');
+        return;
+      }
+      
+      if (userData.role === 'donor') {
+        console.log('Using userData role donor for navigation');
+        router.push('/donor/dashboard');
+        return;
+      }
+    }
+    
+    // Fall back to props if userData is not available
+    if (isTeacher) {
+      console.log('Using isTeacher prop for navigation');
+      router.push('/teacher/projects');
+      return;
+    }
+    
+    if (isAdmin) {
+      console.log('Using isAdmin prop for navigation');
+      router.push('/admin/projects');
+      return;
+    }
+    
+    // For other cases, use a direct navigation approach that doesn't depend on auth state
+    // This is the most reliable fallback
+    console.log('Using direct navigation to public projects page');
+    
+    // Default to projects page - this is public, no auth needed
+    router.push('/projects');
+  };
+
   useEffect(() => {
     if (!projectId) return;
     
@@ -216,6 +296,24 @@ export function ProjectDetail({ projectId, isTeacher = false, isAdmin = false, a
       setError(null);
       
       try {
+        // For anonymous users, use the API endpoint that uses admin privileges
+        if (!user) {
+          console.log('Fetching project as anonymous user via API');
+          const response = await fetch(`/api/projects/${projectId}`);
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to fetch project details');
+          }
+          
+          const projectData = await response.json();
+          setProject(projectData);
+          return;
+        }
+        
+        // For authenticated users, continue using the direct client
+        console.log('Fetching project as authenticated user');
+        
         // Query for the project with basic data
         const { data, error } = await supabase
           .from('projects')
@@ -301,7 +399,7 @@ export function ProjectDetail({ projectId, isTeacher = false, isAdmin = false, a
     };
     
     fetchProject();
-  }, [projectId, refreshTrigger]);
+  }, [projectId, refreshTrigger, user]);
 
   const handleSetupDonorProfile = async () => {
     if (!user) return;
@@ -826,122 +924,6 @@ export function ProjectDetail({ projectId, isTeacher = false, isAdmin = false, a
     return name && name.length > 0 ? name.charAt(0).toUpperCase() : '';
   };
 
-  // Add a more comprehensive debug section earlier to see what URLs we're receiving
-  useEffect(() => {
-    if (DEBUG_IMAGES) {
-      console.log('[DEBUG] User Profile Data:', {
-        teacherImageUrl,
-        teacherProfileId: project?.teacher?.id,
-        teacherProfileImageUrl: project?.teacher?.profile_image_url,
-        teacherImageUrlFromProps: project?.teacher?.image_url
-      });
-      
-      // Log the same URLs we're checking in the debug panel
-      if (project?.teacher?.id) {
-        const paths = [
-          `${SUPABASE_URL}/storage/v1/object/public/profile_images/${project.teacher.id}/profile.jpg`,
-          `${SUPABASE_URL}/storage/v1/object/public/profile_images/${project.teacher.id}/profile.png`,
-          `${SUPABASE_URL}/storage/v1/object/public/teacher_images/${project.teacher.id}/avatar`,
-        ];
-        
-        console.log('[DEBUG] Attempted Paths:', paths);
-        
-        // Test if any of these URLs are valid
-        paths.forEach(path => {
-          fetch(path, { method: 'HEAD' })
-            .then(response => {
-              console.log(`[DEBUG] Path check: ${path} - ${response.ok ? 'Valid' : 'Invalid'}`);
-            })
-            .catch(err => {
-              console.log(`[DEBUG] Error checking path ${path}:`, err);
-            });
-        });
-      }
-    }
-  }, [project, teacherImageUrl]);
-
-  // Add this new useEffect after the existing ones
-  useEffect(() => {
-    if (project?.teacher?.id) {
-      // Get the user_id and auth_id from the teacher profile
-      (async () => {
-        try {
-          const teacherId = project.teacher?.id;
-          if (!teacherId) return;
-          
-          const { data, error } = await supabase
-            .from('teacher_profiles')
-            .select('user_id')
-            .eq('id', teacherId)
-            .single();
-          
-          if (error) {
-            console.error('Error getting teacher user_id:', error);
-            return;
-          }
-          
-          if (data && data.user_id) {
-            console.log('[DEBUG] Found user_id for teacher:', data.user_id);
-            setTeacherUserId(data.user_id);
-            
-            // Get the auth_id from the users table
-            const { data: userData, error: userError } = await supabase
-              .from('users')
-              .select('auth_id, profile_image_url')
-              .eq('id', data.user_id)
-              .maybeSingle();
-              
-            if (!userError && userData && userData.auth_id) {
-              console.log('[DEBUG] Found auth_id for teacher:', userData.auth_id);
-              // Store this in state for use with the ProfileAvatar component
-              setTeacherAuthId(userData.auth_id);
-              
-              // If there's also a profile_image_url, use it directly
-              if (userData.profile_image_url) {
-                setTeacherImageUrl(userData.profile_image_url);
-              }
-            }
-          }
-        } catch (e) {
-          console.error('Error in debug fetch:', e);
-        }
-      })();
-    }
-  }, [project?.teacher?.id]);
-
-  // Add this debug effect to understand the auth/user relationship
-  useEffect(() => {
-    if (user && DEBUG_IMAGES) {
-      console.log('[DEBUG] Current authenticated user:', {
-        auth_id: user.id,
-        user_email: user.email
-      });
-      
-      // Fetch and log the user record from the database
-      (async () => {
-        try {
-          // Get the user record from the database
-          const { data: userData, error: userError } = await supabase
-            .from('users')
-            .select('id, auth_id, profile_image_url')
-            .eq('auth_id', user.id)
-            .single();
-          
-          if (userError) {
-            console.error('Error fetching user data for auth user:', userError);
-          } else if (userData) {
-            console.log('[DEBUG] Found user record in database:', userData);
-            
-            // This is where we should fetch images from
-            console.log('[DEBUG] This is where images should be loaded from for authenticated user:', userData.profile_image_url);
-          }
-        } catch (e) {
-          console.error('Error in auth debug fetch:', e);
-        }
-      })();
-    }
-  }, [user]);
-
   // Add this at the appropriate location in the render function where the teacher image is shown
   if (project?.teacher && isMaria(project.teacher.display_name, project.teacher.id)) {
     // Set Maria's image directly
@@ -1010,172 +992,171 @@ export function ProjectDetail({ projectId, isTeacher = false, isAdmin = false, a
   );
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-      {/* Header */}
-      <div className="relative">
-        {project.main_image_url ? (
-          <div className="h-48 sm:h-64 md:h-80 overflow-hidden">
-            <img 
-              src={project.main_image_url} 
-              alt={project.title}
-              className="w-full h-full object-cover"
+    <div className="container pb-10">
+      {/* Back link */}
+      <div className="pt-4 mb-4">
+        <button
+          onClick={handleBackNavigation}
+          className="inline-flex items-center text-primary-600 hover:underline cursor-pointer"
+        >
+          <svg
+            className="w-5 h-5 mr-1"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
             />
-          </div>
-        ) : (
-          <div className="h-32 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
-        )}
-        
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
-          <div className="flex justify-between items-end">
-            <h1 className="text-2xl sm:text-3xl font-bold text-white">{project.title}</h1>
-            <span className={`${statusLabels[project.status as keyof typeof statusLabels]?.color || 'bg-gray-100 text-gray-800'} text-xs font-medium px-2.5 py-1 rounded-full`}>
-              {statusLabels[project.status as keyof typeof statusLabels]?.text || project.status}
-            </span>
-          </div>
-        </div>
+          </svg>
+          {backLink.text}
+        </button>
       </div>
-      
-      {/* Content */}
-      <div className="p-4 sm:p-6">
-        {/* Teacher & School Info */}
-        {project?.teacher && (() => {
-          // Debug logging outside of JSX
-          if (DEBUG_IMAGES) {
-            console.log('Debug - Teacher data:', {
-              profile_image_url: project.teacher.profile_image_url,
-              image_url: project.teacher.image_url,
-              displayName: project.teacher.display_name
-            });
-          }
+
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+        {/* Header */}
+        <div className="relative">
+          {project.main_image_url ? (
+            <div className="h-48 sm:h-64 md:h-80 lg:h-96 overflow-hidden">
+              <img 
+                src={project.main_image_url} 
+                alt={project.title}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          ) : (
+            <div className="h-32 sm:h-48 md:h-64 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
+          )}
           
-          // Check if teacher is Maria for direct image override
-          const useMariaImage = isMaria(project.teacher.display_name, project.teacher.id);
-          const imageToUse = useMariaImage 
-            ? `${MARIA_IMAGE_URL}?t=${Date.now()}` // Add cache-busting for Maria
-            : teacherImageUrl || project.teacher.profile_image_url || project.teacher.image_url || "https://efneocmdolkzdfhtqkpl.supabase.co/storage/v1/object/public/profile_images/d84d546f-df1d-474d-85ab-e3fc0e805d6a/profile.jpg";
-          
-          return (
-            <div className="mb-6 bg-gradient-to-r from-[#3AB5E9]/10 to-[#0E5D7F]/10 rounded-lg border border-[#3AB5E9]/20 p-4">
-              <div className="flex items-center text-sm">
-                <div className="flex-shrink-0 mr-4">
-                  {/* Special handling for Maria's profile */}
-                  {(teacherUserId === '36a202aa-0670-4225-8507-163fde64890f' || 
-                   teacherAuthId === '89e55400-0f0e-4a27-91f1-f746d31dcf81' ||
-                   useMariaImage) ? (
-                    <Avatar className="h-16 w-16 border-2 border-[#3AB5E9] shadow-md">
-                      <AvatarFallback 
-                        className="text-base text-white"
-                        style={{ backgroundColor: "#3AB5E9" }}
-                      >
-                        MR
-                      </AvatarFallback>
-                    </Avatar>
-                  ) : (
-                    <ProfileAvatar
-                      userId={teacherAuthId || teacherUserId || project.teacher.id}
-                      firstName={project.teacher.display_name.split(' ')[0]}
-                      lastName={project.teacher.display_name.split(' ').slice(1).join(' ')}
-                      imageUrl={teacherImageUrl || project.teacher.profile_image_url}
-                      size="lg"
-                      className="border-2 border-[#3AB5E9] shadow-md"
-                    />
-                  )}
-                </div>
-                <div>
-                  <div className="font-medium text-[#0E5D7F] text-lg">
-                    {project.teacher.display_name}
-                  </div>
-                  {project.teacher.school && (
-                    <div className="text-gray-600">
-                      {project.teacher.school.name}, {project.teacher.school.city}, {project.teacher.school.state}
-                    </div>
-                  )}
-                  <div className="mt-2">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#3AB5E9]/10 text-[#0E5D7F] border border-[#3AB5E9]/20">
-                      Teacher
-                    </span>
-                  </div>
-                </div>
-                {isTeacher && allowEdit && project.status !== 'approved' && (
-                  <div className="ml-auto">
-                    <Link href={`/teacher/projects/edit/${projectId}`}>
-                      <button 
-                        className="inline-flex items-center px-3 py-1.5 border border-[#3AB5E9] rounded-md text-sm font-medium text-[#0E5D7F] bg-white hover:bg-[#3AB5E9]/10 transition-colors"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                        Edit Project
-                      </button>
-                    </Link>
-                  </div>
-                )}
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-6">
+            <div className="flex justify-between items-end">
+              <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">{project.title}</h1>
+              <div className="ml-4">
+                <span className={`${statusLabels[project.status as keyof typeof statusLabels]?.color || 'bg-gray-100 text-gray-800'} text-xs font-medium px-3 py-1.5 rounded-full shadow-sm`}>
+                  {statusLabels[project.status as keyof typeof statusLabels]?.text || project.status}
+                </span>
               </div>
             </div>
-          );
-        })()}
-        
-        {/* Funding Progress */}
-        <div className="mb-6">
-          <div className="flex justify-between mb-1 text-sm font-medium">
-            <span>${project.current_amount || 0} raised</span>
-            <span>Goal: ${project.funding_goal}</span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-            <div 
-              className="bg-blue-600 h-2.5 rounded-full" 
-              style={{ width: `${Math.min(((project.current_amount || 0) / project.funding_goal) * 100, 100)}%` }}
-            ></div>
-          </div>
-          {project.status === 'approved' && (
-            <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-              {Math.round(((project.current_amount || 0) / project.funding_goal) * 100)}% funded
-            </div>
-          )}
         </div>
         
-        {/* Donor Setup Message */}
-        {showDonorSetup && userRole === 'donor' && <DonorSetupMessage />}
-        
-        {/* Action buttons */}
-        <div className="flex flex-wrap gap-3 mb-6">
-          <button
-            onClick={handleWishlistToggle}
-            disabled={wishlistLoading || showDonorSetup}
-            className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              showDonorSetup 
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500'
-                : isInWishlist
-                  ? 'bg-pink-100 text-pink-700 hover:bg-pink-200 dark:bg-pink-900 dark:text-pink-200'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200'
-            }`}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill={isInWishlist ? "currentColor" : "none"}
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
-              className="w-5 h-5 mr-2"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
-              />
-            </svg>
-            {isInWishlist ? 'Saved to Wishlist' : 'Add to Wishlist'}
-          </button>
-
-          {/* View Wishlist link */}
-          {userRole === 'donor' && hasDonorProfile && !showDonorSetup && (
-            <Link
-              href="/account/wishlist"
-              className="flex items-center px-4 py-2 text-sm font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 !hover:text-white dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition-colors"
+        {/* Content */}
+        <div className="p-6 sm:p-8">
+          {/* Teacher & School Info */}
+          {project?.teacher && (() => {
+            // Remove debug logging outside of JSX
+            
+            // Check if teacher is Maria for direct image override
+            const useMariaImage = isMaria(project.teacher.display_name, project.teacher.id);
+            const imageToUse = useMariaImage 
+              ? `${MARIA_IMAGE_URL}?t=${Date.now()}` // Add cache-busting for Maria
+              : teacherImageUrl || project.teacher.profile_image_url || project.teacher.image_url || "https://efneocmdolkzdfhtqkpl.supabase.co/storage/v1/object/public/profile_images/d84d546f-df1d-474d-85ab-e3fc0e805d6a/profile.jpg";
+            
+            return (
+              <div className="mb-6 bg-gradient-to-r from-[#3AB5E9]/10 to-[#0E5D7F]/10 rounded-lg border border-[#3AB5E9]/20 p-4">
+                <div className="flex items-center text-sm">
+                  <div className="flex-shrink-0 mr-4">
+                    {/* Special handling for Maria's profile */}
+                    {(teacherUserId === '36a202aa-0670-4225-8507-163fde64890f' || 
+                     teacherAuthId === '89e55400-0f0e-4a27-91f1-f746d31dcf81' ||
+                     useMariaImage) ? (
+                      <Avatar className="h-16 w-16 border-2 border-[#3AB5E9] shadow-md">
+                        <AvatarFallback 
+                          className="text-base text-white"
+                          style={{ backgroundColor: "#3AB5E9" }}
+                        >
+                          MR
+                        </AvatarFallback>
+                      </Avatar>
+                    ) : (
+                      <ProfileAvatar
+                        userId={teacherAuthId || teacherUserId || project.teacher.id}
+                        firstName={project.teacher.display_name.split(' ')[0]}
+                        lastName={project.teacher.display_name.split(' ').slice(1).join(' ')}
+                        imageUrl={teacherImageUrl || project.teacher.profile_image_url}
+                        size="lg"
+                        className="border-2 border-[#3AB5E9] shadow-md"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <div className="font-medium text-[#0E5D7F] text-lg">
+                      <Link href={`/teachers/${project.teacher.id}`} className="underline hover:text-blue-700">
+                        {project.teacher.display_name}
+                      </Link>
+                    </div>
+                    {project.teacher.school && (
+                      <div className="text-gray-600">
+                        {project.teacher.school.name}, {project.teacher.school.city}, {project.teacher.school.state}
+                      </div>
+                    )}
+                    <div className="mt-2">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#3AB5E9]/10 text-[#0E5D7F] border border-[#3AB5E9]/20">
+                        Teacher
+                      </span>
+                    </div>
+                  </div>
+                  {isTeacher && allowEdit && !['approved', 'active', 'funded', 'completed'].includes(project.status) && (
+                    <div className="ml-auto">
+                      <Link href={`/teacher/projects/edit/${projectId}`}>
+                        <button 
+                          className="inline-flex items-center px-3 py-1.5 border border-[#3AB5E9] rounded-md text-sm font-medium text-[#0E5D7F] bg-white hover:bg-[#3AB5E9]/10 transition-colors"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          Edit Project
+                        </button>
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+          
+          {/* Funding Progress */}
+          <div className="mb-6">
+            <div className="flex justify-between mb-1 text-sm font-medium">
+              <span>${project.current_amount || 0} raised</span>
+              <span>Goal: ${project.funding_goal}</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+              <div 
+                className="bg-blue-600 h-2.5 rounded-full" 
+                style={{ width: `${Math.min(((project.current_amount || 0) / project.funding_goal) * 100, 100)}%` }}
+              ></div>
+            </div>
+            {project.status === 'approved' && (
+              <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                {Math.round(((project.current_amount || 0) / project.funding_goal) * 100)}% funded
+              </div>
+            )}
+          </div>
+          
+          {/* Donor Setup Message */}
+          {showDonorSetup && userRole === 'donor' && <DonorSetupMessage />}
+          
+          {/* Action buttons */}
+          <div className="flex flex-wrap gap-3 mb-6">
+            <button
+              onClick={handleWishlistToggle}
+              disabled={wishlistLoading || showDonorSetup}
+              className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                showDonorSetup 
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500'
+                  : isInWishlist
+                    ? 'bg-pink-100 text-pink-700 hover:bg-pink-200 dark:bg-pink-900 dark:text-pink-200'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200'
+              }`}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                fill="none"
+                fill={isInWishlist ? "currentColor" : "none"}
                 viewBox="0 0 24 24"
                 strokeWidth={1.5}
                 stroke="currentColor"
@@ -1184,157 +1165,130 @@ export function ProjectDetail({ projectId, isTeacher = false, isAdmin = false, a
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  d="M2.25 7.125C2.25 6.504 2.754 6 3.375 6h6c.621 0 1.125.504 1.125 1.125v3.75c0 .621-.504 1.125-1.125 1.125h-6a1.125 1.125 0 01-1.125-1.125v-3.75zM14.25 8.625c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125v8.25c0 .621-.504 1.125-1.125 1.125h-5.25a1.125 1.125 0 01-1.125-1.125v-8.25zM3.75 16.125c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125v2.25c0 .621-.504 1.125-1.125 1.125h-5.25a1.125 1.125 0 01-1.125-1.125v-2.25z"
+                  d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
                 />
               </svg>
-              View My Wishlist
-            </Link>
-          )}
+              {isInWishlist ? 'Saved to Wishlist' : 'Add to Wishlist'}
+            </button>
 
-          {/* Donate button */}
-          <button
-            className="bg-[#3AB5E9] hover:bg-[#0E5D7F] text-white px-4 py-2 rounded-md text-sm font-medium transition-colors shadow-sm"
-            onClick={() => {
-              // Donation logic (to be implemented)
-              alert('Donation functionality would go here');
-            }}
-          >
-            Donate Now
-          </button>
-        </div>
-        
-        {/* Categories */}
-        {project.categories && project.categories.length > 0 && (
-          <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Categories</h3>
-            <div className="flex flex-wrap gap-2">
-              {project.categories.map(category => (
-                <span 
-                  key={category.id} 
-                  className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded-full dark:bg-blue-900 dark:text-blue-300"
+            {/* View Wishlist link */}
+            {userRole === 'donor' && hasDonorProfile && !showDonorSetup && (
+              <Link
+                href="/account/wishlist"
+                className="flex items-center px-4 py-2 text-sm font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 !hover:text-white dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                  className="w-5 h-5 mr-2"
                 >
-                  {category.name}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-        
-        {/* Description */}
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Description</h3>
-          <div className="text-gray-700 dark:text-gray-300 whitespace-pre-line">
-            {project.description}
-          </div>
-        </div>
-        
-        {/* Student Impact */}
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Student Impact</h3>
-          <div className="text-gray-700 dark:text-gray-300 whitespace-pre-line">
-            {project.student_impact}
-          </div>
-        </div>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M2.25 7.125C2.25 6.504 2.754 6 3.375 6h6c.621 0 1.125.504 1.125 1.125v3.75c0 .621-.504 1.125-1.125 1.125h-6a1.125 1.125 0 01-1.125-1.125v-3.75zM14.25 8.625c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125v8.25c0 .621-.504 1.125-1.125 1.125h-5.25a1.125 1.125 0 01-1.125-1.125v-8.25zM3.75 16.125c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125v2.25c0 .621-.504 1.125-1.125 1.125h-5.25a1.125 1.125 0 01-1.125-1.125v-2.25z"
+                  />
+                </svg>
+                View My Wishlist
+              </Link>
+            )}
 
-        {/* Actions */}
-        <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex flex-wrap justify-between items-center">
-            <div className="text-sm text-gray-500 dark:text-gray-400 mb-4 sm:mb-0">
-              <div>Created: {new Date(project.created_at).toLocaleDateString()}</div>
-              <div>Last updated: {new Date(project.updated_at).toLocaleDateString()}</div>
+            {/* Donate button */}
+            <button
+              className="bg-[#3AB5E9] hover:bg-[#0E5D7F] text-white px-4 py-2 rounded-md text-sm font-medium transition-colors shadow-sm"
+              onClick={() => {
+                // Donation logic (to be implemented)
+                alert('Donation functionality would go here');
+              }}
+            >
+              Donate Now
+            </button>
+          </div>
+          
+          {/* Categories */}
+          {project.categories && project.categories.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Categories</h3>
+              <div className="flex flex-wrap gap-2">
+                {project.categories.map(category => (
+                  <span 
+                    key={category.id} 
+                    className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded-full dark:bg-blue-900 dark:text-blue-300"
+                  >
+                    {category.name}
+                  </span>
+                ))}
+              </div>
             </div>
+          )}
+          
+          {/* Description */}
+          <div className="mb-6">
+            <h2 className="text-3xl font-bold tracking-tight text-navy mb-6">{project.title}</h2>
             
-            <div className="flex space-x-3">
-              <ProjectActions 
-                projectId={project.id} 
-                projectTitle={project.title}
-                currentStatus={project.status} 
-                isTeacher={isTeacher}
-                isAdmin={isAdmin}
-                onProjectUpdated={handleProjectUpdate}
-              />
+            <div className="space-y-6">
+              <div className="flex flex-col space-y-1.5">
+                <div className="text-navy flex items-center space-x-1">
+                  <span className="font-semibold">Teacher:</span>
+                  <span className="text-navy-dark">{project.teacher?.display_name}</span>
+                </div>
+                <div className="text-navy flex items-center space-x-1">
+                  <span className="font-semibold">School:</span>
+                  <span className="text-navy-dark">{project.teacher?.school?.name}, {project.teacher?.school?.city}, {project.teacher?.school?.state}</span>
+                </div>
+              </div>
+              
+              <div className="space-y-8 mt-8">
+                <div>
+                  <h3 className="text-xl font-semibold text-navy mb-3">Project Description</h3>
+                  <p className="text-muted-foreground leading-relaxed">{project.description}</p>
+                </div>
+                
+                <div>
+                  <h3 className="text-xl font-semibold text-navy mb-3">Student Impact</h3>
+                  <p className="text-muted-foreground leading-relaxed">{project.student_impact}</p>
+                </div>
+                
+                <div className="flex items-start justify-between bg-sky/5 rounded-lg p-5 border border-sky/20 mt-6">
+                  <div className="flex space-x-16">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Funding Goal</p>
+                      <p className="text-xl font-semibold text-navy">${project.funding_goal.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Created On</p>
+                      <p className="text-lg font-medium text-navy">{new Date(project.created_at).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Actions */}
+          <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex flex-wrap justify-between items-center">
+              <div className="text-sm text-gray-500 dark:text-gray-400 mb-4 sm:mb-0">
+                <div>Created: {new Date(project.created_at).toLocaleDateString()}</div>
+                <div>Last updated: {new Date(project.updated_at).toLocaleDateString()}</div>
+              </div>
+              
+              <div className="flex space-x-3">
+                <ProjectActions 
+                  projectId={project.id} 
+                  projectTitle={project.title}
+                  currentStatus={project.status} 
+                  isTeacher={isTeacher}
+                  isAdmin={isAdmin}
+                  onProjectUpdated={handleProjectUpdate}
+                />
+              </div>
             </div>
           </div>
         </div>
       </div>
-
-      {DEBUG_IMAGES && (
-        <div className="mt-8 p-4 bg-gray-100 rounded-md text-xs font-mono">
-          <h4 className="font-bold mb-2">DEBUG IMAGES:</h4>
-          <div>teacherImageUrl: {teacherImageUrl || 'null'}</div>
-          <div>teacher.profile_image_url: {project.teacher?.profile_image_url || 'null'}</div>
-          <div>teacher.image_url: {project.teacher?.image_url || 'null'}</div>
-          <div>teacher.id: {project.teacher?.id || 'null'}</div>
-          
-          <div className="mt-4">
-            <h5 className="font-bold">Direct Image Tests:</h5>
-            
-            {/* Known Working Image (Colorful Apple Logo) */}
-            <div className="mt-2 border p-3 bg-white">
-              <div className="font-bold">Known Working Image (Apple Logo):</div>
-              <img 
-                src="https://efneocmdolkzdfhtqkpl.supabase.co/storage/v1/object/public/profile_images/d84d546f-df1d-474d-85ab-e3fc0e805d6a/profile.jpg"
-                alt="Apple Logo"
-                className="h-16 w-16 rounded-full border-2 border-blue-500 my-2 mx-auto"
-              />
-              <div className="text-[10px] break-all">
-                URL: https://efneocmdolkzdfhtqkpl.supabase.co/storage/v1/object/public/profile_images/d84d546f-df1d-474d-85ab-e3fc0e805d6a/profile.jpg
-              </div>
-            </div>
-            
-            {project.teacher?.id && (
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                {[
-                  `${SUPABASE_URL}/storage/v1/object/public/profile_images/${project.teacher.id}/profile.jpg`,
-                  `${SUPABASE_URL}/storage/v1/object/public/profile_images/${project.teacher.id}/profile.png`,
-                  `${SUPABASE_URL}/storage/v1/object/public/teacher_images/${project.teacher.id}/avatar`
-                ].map((path, i) => (
-                  <div key={i} className="mb-3 border p-2">
-                    <div className="mb-1 text-[10px] truncate">{path}</div>
-                    <img 
-                      src={path} 
-                      alt={`Test path ${i+1}`} 
-                      className="h-16 w-16 object-cover mx-auto border"
-                      onError={() => console.log(`Image at ${path} failed to load`)}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {DEBUG_IMAGES && (
-        <div className="mt-4 p-3 bg-gray-50 border rounded text-xs">
-          <h4 className="font-bold">Image Debug Info</h4>
-          <div>teacher.id: {project.teacher?.id || 'null'}</div>
-          <div>teacher.profile_image_url: {project.teacher?.profile_image_url || 'null'}</div>
-          <div>teacher.image_url: {project.teacher?.image_url || 'null'}</div>
-          <div>teacherImageUrl state: {teacherImageUrl || 'null'}</div>
-          <div>userId for images: {user?.id || 'null'}</div>
-          
-          {project.teacher?.id && user?.id && (
-            <div className="grid grid-cols-2 gap-2 mt-2">
-              {[
-                `${SUPABASE_URL}/storage/v1/object/public/profile_images/${user.id}/profile.jpg`,
-                `${SUPABASE_URL}/storage/v1/object/public/profile_images/${user.id}/profile.png`,
-                `${SUPABASE_URL}/storage/v1/object/public/teacher_images/${user.id}/avatar`
-              ].map((path, i) => (
-                <div key={i} className="mb-3 border p-2">
-                  <div className="mb-1 text-[10px] truncate">{path}</div>
-                  <img 
-                    src={path} 
-                    alt={`Test path ${i+1}`} 
-                    className="h-16 w-16 object-cover mx-auto border"
-                    onError={() => console.log(`Image at ${path} failed to load`)}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

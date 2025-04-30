@@ -27,7 +27,11 @@ import {
   ArrowRight,
   PlusCircle,
   LifeBuoy,
-  Eye
+  Eye,
+  AlertTriangle,
+  Home,
+  AlertCircle,
+  RefreshCw
 } from "lucide-react"
 import Link from "next/link"
 import { Loader } from "lucide-react"
@@ -513,14 +517,27 @@ function TeacherDashboardContent() {
   if (!isTeacher) {
     return (
       <div className="container mx-auto py-10">
-        <div className="flex flex-col justify-center items-center min-h-[60vh]">
-          <div className="bg-red-50 border border-red-200 text-red-700 px-8 py-6 rounded-lg max-w-md text-center">
-            <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-            <p className="mb-4">You need a teacher account to access this dashboard.</p>
-            <Button onClick={() => router.push('/dashboard')} className="bg-blue-500 hover:bg-blue-600">
-              Go to Main Dashboard
-            </Button>
-          </div>
+        <div className="flex justify-center items-center min-h-[60vh]">
+          <Card className="w-full max-w-md overflow-hidden border-t-4 border-t-salmon shadow-md">
+            <CardHeader className="bg-gradient-to-r from-salmon-light to-navy-light">
+              <CardTitle className="text-xl font-bold text-navy flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-salmon" />
+                Access Denied
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <p className="text-gray-700 mb-4">You need a teacher account to access this dashboard.</p>
+            </CardContent>
+            <CardFooter className="pt-4 border-t">
+              <Button 
+                onClick={() => router.push('/dashboard')} 
+                className="w-full gap-2 bg-navy hover:bg-navy/90"
+              >
+                <Home className="h-4 w-4" />
+                Go to Main Dashboard
+              </Button>
+            </CardFooter>
+          </Card>
         </div>
       </div>
     );
@@ -530,17 +547,34 @@ function TeacherDashboardContent() {
   if (error) {
     return (
       <div className="container mx-auto py-10">
-        <div className="flex flex-col justify-center items-center min-h-[60vh]">
-          <div className="bg-red-50 border border-red-200 text-red-700 px-8 py-6 rounded-lg max-w-md text-center">
-            <h2 className="text-xl font-semibold mb-2">Error</h2>
-            <p className="mb-4">{error}</p>
-            <Button onClick={() => window.location.reload()} className="bg-blue-500 hover:bg-blue-600 mr-2">
-              Refresh Page
-            </Button>
-            <Button onClick={() => router.push('/dashboard')} className="bg-gray-500 hover:bg-gray-600">
-              Go to Main Dashboard
-            </Button>
-          </div>
+        <div className="flex justify-center items-center min-h-[60vh]">
+          <Card className="w-full max-w-md overflow-hidden border-t-4 border-t-salmon shadow-md">
+            <CardHeader className="bg-gradient-to-r from-salmon-light to-navy-light">
+              <CardTitle className="text-xl font-bold text-navy flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-salmon" />
+                Error
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <p className="text-gray-700 mb-4">{error}</p>
+            </CardContent>
+            <CardFooter className="pt-4 border-t flex justify-between gap-4">
+              <Button 
+                onClick={() => window.location.reload()} 
+                className="flex-1 bg-sky hover:bg-sky/90"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh Page
+              </Button>
+              <Button 
+                onClick={() => router.push('/dashboard')} 
+                className="flex-1 bg-navy hover:bg-navy/90"
+              >
+                <Home className="h-4 w-4 mr-2" />
+                Main Dashboard
+              </Button>
+            </CardFooter>
+          </Card>
         </div>
       </div>
     );

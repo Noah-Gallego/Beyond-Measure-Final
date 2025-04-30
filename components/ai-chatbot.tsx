@@ -26,6 +26,7 @@ export function AIChatbot() {
   ])
   const [inputValue, setInputValue] = useState("")
   const [isTyping, setIsTyping] = useState(false)
+  const [isError, setIsError] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -43,8 +44,11 @@ export function AIChatbot() {
     }
   }, [isOpen])
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!inputValue.trim()) return
+
+    // Reset error state on new message
+    setIsError(false)
 
     // Add user message
     const userMessage: Message = {
@@ -57,26 +61,61 @@ export function AIChatbot() {
     setInputValue("")
     setIsTyping(true)
 
-    // Simulate AI response after a delay
-    setTimeout(() => {
-      const responses = [
-        "I'd be happy to help with that! Could you provide more details?",
-        "That's a great question about BeyondMeasure. Our platform helps teachers create meaningful assessments.",
-        "Thanks for asking! BeyondMeasure was founded in 2018 by a team of passionate educators.",
-        "I understand you're interested in our assessment tools. Would you like me to explain how they work?",
-        "BeyondMeasure offers various pricing plans for individual teachers, schools, and districts.",
-      ]
+    try {
+      // Format messages for the API - only include content and role
+      const apiMessages = messages
+        .concat(userMessage)
+        .map(msg => ({
+          role: msg.role,
+          content: msg.content
+        }));
 
+      // Call our API endpoint
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ messages: apiMessages }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        const errorMessage = data.error || 'Error connecting to the AI service';
+        throw new Error(errorMessage);
+      }
+      
+      // Check if we got a valid response
+      if (!data.message || !data.message.content) {
+        throw new Error('Invalid response format from AI service');
+      }
+
+      // Add AI response
       const aiMessage: Message = {
         id: Date.now().toString(),
-        content: responses[Math.floor(Math.random() * responses.length)],
+        content: data.message.content,
         role: "assistant",
         timestamp: new Date(),
       }
 
-      setMessages((prev) => [...prev, aiMessage])
-      setIsTyping(false)
-    }, 1500)
+      setMessages((prev) => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('Error getting AI response:', error);
+      setIsError(true);
+      
+      // Add error message to let user know to try again
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        content: "I'm sorry, I wasn't able to get a response. Please try again or refresh the page.",
+        role: "assistant",
+        timestamp: new Date(),
+      }
+      
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsTyping(false);
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -158,6 +197,11 @@ export function AIChatbot() {
                 </div>
               </div>
             )}
+            {isError && !isTyping && (
+              <div className="text-center text-xs text-red-500 mt-2">
+                <p>Having trouble connecting to AI services</p>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
         </div>
@@ -178,7 +222,7 @@ export function AIChatbot() {
               size="icon"
               className="h-8 w-8 rounded-full bg-sky/10 text-sky hover:bg-sky/20"
               onClick={handleSendMessage}
-              disabled={!inputValue.trim()}
+              disabled={!inputValue.trim() || isTyping}
             >
               <Send className="h-4 w-4" />
               <span className="sr-only">Send</span>

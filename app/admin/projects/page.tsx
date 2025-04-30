@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, CheckCircle, Clock, AlertCircle, RefreshCw, Trash2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Clock, AlertCircle, RefreshCw, Trash2, AlertTriangle, Home } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import DeleteProjectModal from '@/components/DeleteProjectModal';
 import dynamic from 'next/dynamic';
@@ -31,7 +31,55 @@ type Project = {
   teacher_name?: string;
   school_name?: string;
   created_at: string;
+  teacher_id?: string;
 };
+
+// Add this component before AdminProjectsContent
+function TeacherNameDisplay({ teacherId, initialName }: { teacherId: string | null, initialName: string }) {
+  const [teacherName, setTeacherName] = useState(initialName);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  useEffect(() => {
+    // Only fetch if we have an ID and the initial name is missing
+    if (teacherId && (initialName === 'Unknown Teacher' || initialName === 'Unknown')) {
+      const getTeacherInfo = async () => {
+        setIsLoading(true);
+        try {
+          const teacherInfo = await fetch(`/api/admin/get-teacher?id=${teacherId}`).then(r => r.json());
+          if (teacherInfo?.teacher) {
+            const { first_name, last_name } = teacherInfo.teacher;
+            if (first_name || last_name) {
+              setTeacherName(`${first_name || ''} ${last_name || ''}`.trim());
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching teacher:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      getTeacherInfo();
+    }
+  }, [teacherId, initialName]);
+  
+  if (isLoading) {
+    return <span className="text-muted-foreground italic">Loading...</span>;
+  }
+  
+  if (!teacherId) {
+    return <span>{teacherName}</span>;
+  }
+  
+  return (
+    <Link 
+      href={`/teacher/profile/${teacherId}`} 
+      className="text-navy hover:underline"
+    >
+      {teacherName}
+    </Link>
+  );
+}
 
 // Create a client component that uses the router
 function AdminProjectsContent() {
@@ -105,17 +153,19 @@ function AdminProjectsContent() {
     try {
       setLoading(true);
       
-      // Build query based on status filter
+      // Build query with enhanced joins to retrieve teacher data
       let query = supabase
         .from('projects')
         .select(`
           *,
           teacher_profiles:teacher_id (
-            id,
-            school_name,
+            *,
             users:user_id (
+              id,
               first_name,
-              last_name
+              last_name,
+              email,
+              role
             )
           )
         `)
@@ -153,26 +203,49 @@ function AdminProjectsContent() {
       
       if (!data || data.length === 0) {
         console.log(`No projects found with status filter: ${statusFilter}`);
-        // Let's double check with a direct count query
-        const { count, error: countError } = await supabase
-          .from('projects')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', statusFilter === 'pending' ? 'pending_review' : statusFilter === 'all' ? 'draft' : statusFilter);
-          
-        console.log('Count check result:', { count, countError });
+        setProjects([]);
+        return;
       }
       
-      // Format the data for display
+      // Format the data for display with improved teacher name handling
       const formattedProjects = data.map((project: any) => {
-        // Add null checks to prevent "Cannot read properties of null"
-        const teacherFirstName = project.teacher_profiles?.users?.first_name || 'Unknown';
-        const teacherLastName = project.teacher_profiles?.users?.last_name || '';
-        const schoolName = project.teacher_profiles?.school_name || 'Unknown School';
+        // Enhanced teacher info extraction with detailed logging
+        const teacherProfile = project.teacher_profiles;
+        const teacherUser = teacherProfile?.users;
+        
+        console.log('Processing project:', {
+          projectId: project.id,
+          teacherProfileId: project.teacher_id,
+          teacherProfile: teacherProfile ? 'exists' : 'null',
+          teacherUser: teacherUser ? 'exists' : 'null',
+          firstName: teacherUser?.first_name,
+          lastName: teacherUser?.last_name
+        });
+        
+        // Try multiple ways to get teacher name
+        let teacherName = 'Unknown Teacher';
+        let teacherId = null;
+        
+        if (teacherProfile) {
+          teacherId = teacherProfile.id;
+          
+          if (teacherUser?.first_name || teacherUser?.last_name) {
+            const first = teacherUser.first_name || '';
+            const last = teacherUser.last_name || '';
+            teacherName = `${first} ${last}`.trim();
+          } else if (teacherProfile.display_name) {
+            teacherName = teacherProfile.display_name;
+          }
+        }
+        
+        // Get school name with fallback
+        const schoolName = teacherProfile?.school_name || 'Unknown School';
         
         return {
           ...project,
-          teacher_name: `${teacherFirstName} ${teacherLastName}`.trim() || 'Unknown Teacher',
-          school_name: schoolName
+          teacher_name: teacherName,
+          school_name: schoolName,
+          teacher_id: teacherId
         };
       });
       
@@ -185,14 +258,54 @@ function AdminProjectsContent() {
     }
   };
 
+  const fetchTeacherInfo = async (teacherId: string) => {
+    try {
+      const response = await fetch(`/api/admin/get-teacher?id=${teacherId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch teacher: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      return data.teacher;
+    } catch (error) {
+      console.error('Error fetching teacher info:', error);
+      return null;
+    }
+  };
+
   const handleReviewProject = async (projectId: string, status: string) => {
     try {
       setLoading(true);
       
+      // First run diagnostic function to see what's happening
+      console.log('Running diagnostic function...');
+      const { data: diagData, error: diagError } = await supabase.rpc('debug_admin_review', {
+        p_project_id: projectId,
+        p_status: status,
+        p_notes: reviewNotes[projectId] || null
+      });
+      
+      if (diagError) {
+        console.error('Diagnostic error:', diagError);
+        setMessage(`Diagnostic error: ${diagError.message}`);
+        return;
+      }
+      
+      console.log('Diagnostic result:', diagData);
+      
+      // Map frontend button actions to the correct status values
+      const mappedStatus = status === 'approved' ? 'approved' : status;
+      
       // Call the admin review function
       const { data, error } = await supabase.rpc('admin_review_project', {
         p_project_id: projectId,
-        p_status: status,
+        p_status: mappedStatus,
         p_notes: reviewNotes[projectId] || null
       });
       
@@ -353,16 +466,20 @@ function AdminProjectsContent() {
   if (!isAdmin) {
     return (
       <div className="container mx-auto py-12 px-4">
-        <Card className="max-w-md mx-auto">
-          <CardHeader>
-            <CardTitle className="text-xl text-salmon">Access Denied</CardTitle>
+        <Card className="max-w-md mx-auto overflow-hidden border-t-4 border-t-salmon shadow-md">
+          <CardHeader className="bg-gradient-to-r from-salmon-light to-navy-light">
+            <CardTitle className="text-xl font-bold text-navy flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-salmon" />
+              Access Denied
+            </CardTitle>
             <CardDescription>
               {message || 'You do not have permission to access this page.'}
             </CardDescription>
           </CardHeader>
-          <CardFooter>
-            <Button asChild variant="outline" className="w-full">
+          <CardFooter className="pt-4 border-t">
+            <Button asChild className="gap-2 bg-navy hover:bg-navy/90 w-full">
               <Link href="/">
+                <Home className="h-4 w-4" />
                 Return to Home
               </Link>
             </Button>
@@ -441,12 +558,15 @@ function AdminProjectsContent() {
                     <div className="flex justify-between items-start">
                       <div>
                         <CardTitle className="text-xl text-navy">{project.title}</CardTitle>
-                        <CardDescription className="mt-1">
-                          <div className="flex flex-col gap-1">
-                            <span><span className="font-medium text-muted-foreground">Teacher:</span> {project.teacher_name}</span>
-                            <span><span className="font-medium text-muted-foreground">School:</span> {project.school_name}</span>
-                          </div>
-                        </CardDescription>
+                        <div className="mt-1 text-sm text-muted-foreground">
+                          <span className="block mb-1"><span className="font-medium">Teacher:</span> 
+                            <TeacherNameDisplay 
+                              teacherId={project.teacher_id} 
+                              initialName={project.teacher_name} 
+                            />
+                          </span>
+                          <span className="block"><span className="font-medium">School:</span> {project.school_name}</span>
+                        </div>
                       </div>
                       {getStatusBadge(project.status)}
                     </div>
@@ -496,7 +616,7 @@ function AdminProjectsContent() {
                           variant="grass"
                           className="sm:flex-1"
                           onClick={() => handleReviewProject(project.id, 'approved')}
-                          disabled={loading}
+                          disabled={loading || !reviewNotes[project.id]}
                         >
                           Approve Project
                         </Button>
@@ -591,15 +711,6 @@ function AdminProjectsLoading() {
   );
 }
 
-// Dynamically import AdminProjectsContent to ensure proper handling of useSearchParams
-const AdminProjectsContentDynamic = dynamic(
-  () => import('@/components/admin/AdminProjectsContent'),
-  { 
-    ssr: false,
-    loading: () => <AdminProjectsLoading />
-  }
-);
-
 // Main component with Suspense boundary
 export default function AdminProjectsPage() {
   // Ensure it's mounted before rendering
@@ -615,7 +726,7 @@ export default function AdminProjectsPage() {
   
   return (
     <Suspense fallback={<AdminProjectsLoading />}>
-      <AdminProjectsContentDynamic />
+      <AdminProjectsContent />
     </Suspense>
   );
 } 

@@ -188,8 +188,63 @@ export async function fetchProfileImage(userId: string): Promise<string | null> 
     // Try multiple formats and prioritize newer formats
     const formats = ['gif', 'jpeg', 'jpg', 'png', 'webp'];
     
+    // First check donor_avatars bucket which is newer
     for (const id of idsToCheck) {
-      console.log(`Checking storage with ID: ${id}`);
+      console.log(`Checking donor_avatars storage with ID: ${id}`);
+      
+      // Check for profiles folder structure
+      try {
+        const { data: folderData, error: folderError } = await supabase.storage
+          .from('donor_avatars')
+          .list(`profiles/${id}`);
+          
+        if (!folderError && folderData && folderData.length > 0) {
+          const imageFiles = folderData.filter(item => {
+            const name = item.name.toLowerCase();
+            return name.endsWith('.jpg') || name.endsWith('.jpeg') || 
+                   name.endsWith('.png') || name.endsWith('.gif') || 
+                   name.endsWith('.webp');
+          });
+          
+          if (imageFiles.length > 0) {
+            // Sort by newest timestamp
+            const mostRecent = imageFiles.sort((a, b) => {
+              const aTime = parseInt(a.name.split('-').pop()?.split('.')[0] || '0', 10) || 0;
+              const bTime = parseInt(b.name.split('-').pop()?.split('.')[0] || '0', 10) || 0;
+              return bTime - aTime;
+            })[0];
+            
+            const { data } = supabase.storage
+              .from('donor_avatars')
+              .getPublicUrl(`profiles/${id}/${mostRecent.name}`);
+              
+            console.log(`Found working image in donor_avatars: ${data.publicUrl}`);
+            
+            // Update both database tables with this URL
+            if (authId) {
+              await supabase
+                .from('profiles')
+                .update({ profile_image_url: data.publicUrl })
+                .eq('id', authId);
+            }
+            
+            if (dbUserId) {
+              await supabase
+                .from('users')
+                .update({ profile_image_url: data.publicUrl })
+                .eq('id', dbUserId);
+            }
+            
+            return data.publicUrl;
+          }
+        }
+      } catch (e) {
+        console.warn(`Error checking donor_avatars for ID ${id}:`, e);
+      }
+    }
+    
+    for (const id of idsToCheck) {
+      console.log(`Checking profile_images storage with ID: ${id}`);
       
       for (const format of formats) {
         const { data } = supabase.storage

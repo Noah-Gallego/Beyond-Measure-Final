@@ -13,6 +13,8 @@ import { CategoryBadge } from '@/components/CategoryBadge';
 import { FundingProgress } from '@/components/FundingProgress';
 import { useTheme } from "next-themes";
 import { createClient } from '@/utils/supabase/client';
+import { Heart, CheckCircle, XCircle } from 'lucide-react';
+import { addToWishlist, removeFromWishlist, createDonorProfile } from '@/utils/supabase';
 
 type Project = {
   id: string;
@@ -61,6 +63,10 @@ export default function ProjectsList({
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const [darkMode, setDarkMode] = useState(false);
+  const [wishlistedProjects, setWishlistedProjects] = useState<string[]>([]);
+  const [wishlistLoading, setWishlistLoading] = useState<Record<string, boolean>>({});
+  const [wishlistSuccess, setWishlistSuccess] = useState<Record<string, boolean>>({});
+  const [wishlistError, setWishlistError] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     // Check if user prefers dark mode
@@ -322,6 +328,289 @@ export default function ProjectsList({
     alert(`Donation functionality would be implemented with Stripe for project ${projectId}`);
   };
 
+  // Add CSS styles for heart animation
+  useEffect(() => {
+    // Define the CSS for heart animation
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes heartPulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.3); }
+        100% { transform: scale(1); }
+      }
+      
+      .heart-btn {
+        transition: all 0.2s ease;
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        padding: 8px;
+        background-color: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(4px);
+        border-radius: 50%;
+        z-index: 10;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      }
+      
+      .heart-btn:hover {
+        transform: scale(1.1);
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+      }
+      
+      .heart-btn.active {
+        color: #e11d48;
+        fill: #e11d48;
+      }
+      
+      .heart-pulse {
+        animation: heartPulse 0.4s ease-in-out;
+      }
+      
+      .wishlist-status {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        padding: 8px;
+        background-color: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(4px);
+        border-radius: 50%;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+    `;
+    document.head.appendChild(style);
+    
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
+  // Fetch user's wishlisted projects if logged in
+  useEffect(() => {
+    async function fetchUserWishlist() {
+      if (!user) {
+        setWishlistedProjects([]);
+        return;
+      }
+      
+      try {
+        console.log('Fetching wishlist for user:', user.id);
+        
+        // Check localStorage for cached wishlist data first
+        if (typeof window !== 'undefined') {
+          const cachedWishlist = localStorage.getItem(`wishlist_${user.id}`);
+          if (cachedWishlist) {
+            try {
+              const parsedData = JSON.parse(cachedWishlist);
+              if (Array.isArray(parsedData) && parsedData.length > 0) {
+                console.log('Using cached wishlist data:', parsedData);
+                setWishlistedProjects(parsedData);
+              }
+            } catch (e) {
+              console.error('Error parsing cached wishlist data:', e);
+            }
+          }
+        }
+        
+        // Get user DB ID
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('auth_id', user.id)
+          .maybeSingle();
+        
+        if (userError || !userData) {
+          console.error('Error fetching user data:', userError);
+          return;
+        }
+        
+        // Check if the donor profile exists
+        const { data: donorData, error: donorError } = await supabase
+          .from('donor_profiles')
+          .select('id')
+          .eq('user_id', userData.id)
+          .maybeSingle();
+        
+        // Handle real errors, but not "no rows returned" which isn't an error
+        if (donorError && donorError.code !== 'PGRST116') {
+          console.error('Error checking donor profile:', donorError);
+          return;
+        }
+        
+        // Store donor ID if we found a profile
+        let donorId = donorData?.id;
+        
+        // If no donor profile found, just proceed without creating one
+        // This will change when the user actually tries to wishlist something
+        if (!donorId) {
+          console.log('No donor profile found for wishlist fetch. Will create when needed.');
+          return; // Exit early - don't try to create a profile here
+        }
+        
+        // Get wishlist items if we have a donor profile
+        const { data: wishlistItems, error: wishlistError } = await supabase
+          .from('donor_wishlists')
+          .select('project_id')
+          .eq('donor_id', donorId);
+        
+        if (wishlistError) {
+          console.error('Error fetching wishlist:', wishlistError);
+          return;
+        }
+        
+        // Extract project IDs
+        const projectIds = wishlistItems?.map(item => item.project_id) || [];
+        
+        // Cache to localStorage for faster loading on page changes
+        if (typeof window !== 'undefined' && projectIds.length > 0) {
+          localStorage.setItem(`wishlist_${user.id}`, JSON.stringify(projectIds));
+        }
+        
+        console.log('Wishlisted projects from DB:', projectIds);
+        setWishlistedProjects(projectIds);
+      } catch (error) {
+        console.error('Error in fetchUserWishlist:', error);
+      }
+    }
+    
+    fetchUserWishlist();
+  }, [user]);
+
+  // Update handleWishlistToggle to also update localStorage
+  const handleWishlistToggle = async (e, projectId) => {
+    e.preventDefault(); // Prevent navigation
+    e.stopPropagation(); // Prevent bubbling
+    
+    // Store a reference to the button element before the setTimeout
+    const heartBtn = e.currentTarget;
+    heartBtn.classList.add('heart-pulse');
+    
+    // Remove animation class after it completes
+    setTimeout(() => {
+      heartBtn.classList.remove('heart-pulse');
+    }, 400);
+    
+    if (!user) {
+      // Redirect to auth or show login modal
+      alert('Please sign in to add projects to your wishlist');
+      return;
+    }
+    
+    // Set loading state for this project
+    setWishlistLoading(prev => ({ ...prev, [projectId]: true }));
+    
+    try {
+      // Reset previous states
+      setWishlistSuccess(prev => ({ ...prev, [projectId]: false }));
+      setWishlistError(prev => ({ ...prev, [projectId]: false }));
+      
+      // Check if project is already in wishlist
+      const isWishlisted = wishlistedProjects.includes(projectId);
+      
+      // Get user DB ID
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('auth_id', user.id)
+        .maybeSingle();
+      
+      if (userError || !userData) {
+        console.error('Error fetching user data:', userError);
+        setWishlistError(prev => ({ ...prev, [projectId]: true }));
+        return;
+      }
+      
+      // Get donor profile or create one
+      let donorProfileId;
+      const { data: donorData, error: donorError } = await supabase
+        .from('donor_profiles')
+        .select('id')
+        .eq('user_id', userData.id)
+        .maybeSingle();
+      
+      if (donorError && donorError.code !== 'PGRST116') {
+        console.error('Error fetching donor profile:', donorError);
+        setWishlistError(prev => ({ ...prev, [projectId]: true }));
+        return;
+      }
+      
+      if (!donorData) {
+        console.log('No donor profile found, creating one...');
+        
+        // Create donor profile using the createDonorProfile utility function
+        const result = await createDonorProfile(user.id);
+        
+        if (!result.success || !result.donorProfile) {
+          console.error('Failed to create donor profile:', result.error);
+          setWishlistError(prev => ({ ...prev, [projectId]: true }));
+          return;
+        }
+        
+        donorProfileId = result.donorProfile.id;
+      } else {
+        donorProfileId = donorData.id;
+      }
+      
+      // Use the utility functions from supabase.ts
+      if (isWishlisted) {
+        // Remove from wishlist
+        const result = await removeFromWishlist(donorProfileId, projectId);
+        if (result.success) {
+          // Update local state
+          const updatedWishlist = wishlistedProjects.filter(id => id !== projectId);
+          setWishlistedProjects(updatedWishlist);
+          
+          // Update localStorage cache
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(`wishlist_${user.id}`, JSON.stringify(updatedWishlist));
+          }
+        } else {
+          console.error('Error removing from wishlist:', result.error);
+          setWishlistError(prev => ({ ...prev, [projectId]: true }));
+          return;
+        }
+      } else {
+        // Add to wishlist
+        const result = await addToWishlist(donorProfileId, projectId);
+        if (result.success) {
+          // Update local state
+          const updatedWishlist = [...wishlistedProjects, projectId];
+          setWishlistedProjects(updatedWishlist);
+          
+          // Update localStorage cache
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(`wishlist_${user.id}`, JSON.stringify(updatedWishlist));
+          }
+        } else {
+          console.error('Error adding to wishlist:', result.error);
+          setWishlistError(prev => ({ ...prev, [projectId]: true }));
+          return;
+        }
+      }
+      
+      // Show success indicator
+      setWishlistSuccess(prev => ({ ...prev, [projectId]: true }));
+      
+      // Hide success after a delay
+      setTimeout(() => {
+        setWishlistSuccess(prev => ({ ...prev, [projectId]: false }));
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Error toggling wishlist:', error);
+      setWishlistError(prev => ({ ...prev, [projectId]: true }));
+    } finally {
+      setWishlistLoading(prev => ({ ...prev, [projectId]: false }));
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-16">
@@ -398,7 +687,7 @@ export default function ProjectsList({
         <Link 
           href={`/projects/${project.id}`} 
           key={project.id} 
-          className="project-card"
+          className="project-card relative"
         >
           <div className="project-image-container">
             {project.main_image_url ? (
@@ -426,6 +715,29 @@ export default function ProjectsList({
             <div className="project-funding-badge">
               {Math.round((project.current_amount / project.funding_goal) * 100)}% Funded
             </div>
+            
+            {/* Wishlist button */}
+            {wishlistLoading[project.id] ? (
+              <div className="wishlist-status">
+                <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-blue-600"></div>
+              </div>
+            ) : wishlistSuccess[project.id] ? (
+              <div className="wishlist-status text-green-500">
+                <CheckCircle className="h-5 w-5" />
+              </div>
+            ) : wishlistError[project.id] ? (
+              <div className="wishlist-status text-red-500">
+                <XCircle className="h-5 w-5" />
+              </div>
+            ) : (
+              <button 
+                className={`heart-btn ${wishlistedProjects.includes(project.id) ? 'active' : ''}`}
+                onClick={(e) => handleWishlistToggle(e, project.id)}
+                aria-label={wishlistedProjects.includes(project.id) ? "Remove from wishlist" : "Add to wishlist"}
+              >
+                <Heart className="h-5 w-5" fill={wishlistedProjects.includes(project.id) ? "currentColor" : "none"} />
+              </button>
+            )}
           </div>
           
           <div className="project-content">

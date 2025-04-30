@@ -40,6 +40,11 @@ export function MobileNav({ sections }: MobileNavProps) {
       active: pathname === "/projects" || pathname === "/projects/create",
     },
     {
+      href: "/teachers",
+      label: "Our Teachers",
+      active: pathname === "/teachers" || pathname.startsWith("/teachers/"),
+    },
+    {
       href: "/contact",
       label: "Contact",
       active: pathname === "/contact",

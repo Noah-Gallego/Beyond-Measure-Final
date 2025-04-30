@@ -124,7 +124,7 @@ function AvatarUploadContent() {
       const filePath = `profiles/${userId}/${fileName}.${fileExt}`;
       
       const { error: uploadError } = await supabase.storage
-        .from('avatars')
+        .from('donor_avatars')
         .upload(filePath, selectedFile, {
           cacheControl: '3600',
           upsert: true
@@ -136,7 +136,7 @@ function AvatarUploadContent() {
       
       // Get the public URL
       const { data: publicUrlData } = supabase.storage
-        .from('avatars')
+        .from('donor_avatars')
         .getPublicUrl(filePath);
       
       const publicUrl = publicUrlData.publicUrl;

@@ -53,25 +53,33 @@ function CreateProjectContent() {
         return;
       }
       
+      // Import the role helper
+      const { getUserRole } = await import('@/utils/role-helpers');
+      const role = await getUserRole(user);
+      
+      if (role !== 'teacher') {
+        console.log(`User role is ${role}, not teacher`);
+        setIsTeacher(false);
+        setMessage('You do not have permission to access this page. Only teachers can create projects.');
+        return;
+      }
+      
+      // Set teacher status
+      setIsTeacher(true);
+      
+      // Now get the teacher profile ID
       const { data, error } = await supabase
         .from('users')
         .select(`
-          role,
+          id,
           teacher_profiles(id)
         `)
         .eq('auth_id', user.id)
         .single();
       
       if (error) {
-        console.error('Error checking user role:', error);
-        setIsTeacher(false);
-        return;
-      }
-      
-      setIsTeacher(data.role === 'teacher');
-      
-      if (data.role !== 'teacher') {
-        setMessage('You do not have permission to access this page.');
+        console.error('Error fetching teacher profile:', error);
+        setMessage('Error fetching your teacher profile. Please refresh and try again.');
         return;
       }
       
@@ -90,11 +98,27 @@ function CreateProjectContent() {
       if (profileId) {
         setTeacherProfileId(profileId);
       } else {
-        setMessage('Teacher profile not found. Please complete your profile setup.');
+        // Try to create a teacher profile
+        const { data: newProfile, error: createError } = await supabase
+          .from('teacher_profiles')
+          .insert({
+            user_id: data.id,
+            created_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+          
+        if (createError) {
+          console.error('Error creating teacher profile:', createError);
+          setMessage('Teacher profile not found and could not be created automatically. Please complete your profile setup.');
+        } else if (newProfile) {
+          setTeacherProfileId(newProfile.id);
+        }
       }
     } catch (error) {
       console.error('Error checking user role:', error);
       setIsTeacher(false);
+      setMessage('Error checking your access permissions. Please try again later.');
     }
   };
 

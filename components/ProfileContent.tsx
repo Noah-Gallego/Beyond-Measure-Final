@@ -31,11 +31,21 @@ export default function ProfileContent() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [refreshTimestamp, setRefreshTimestamp] = useState(Date.now());
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
   });
+
+  // Refresh timestamp periodically to force image refresh
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRefreshTimestamp(Date.now());
+    }, 2000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -50,13 +60,40 @@ export default function ProfileContent() {
       if (!user) return;
       
       try {
-        const { data, error } = await supabase
+        // First try to get user data by auth_id
+        let { data, error } = await supabase
           .from('users')
           .select('*')
           .eq('auth_id', user.id)
           .single();
         
-        if (error) {
+        // If not found, try to create the user record
+        if (error && error.code === 'PGRST116') { // No rows returned
+          console.log('User record not found, attempting to create one');
+          
+          // Create user record based on auth data
+          const { data: newUser, error: createError } = await supabase
+            .from('users')
+            .insert({
+              auth_id: user.id,
+              email: user.email,
+              first_name: user.user_metadata?.first_name || '',
+              last_name: user.user_metadata?.last_name || '',
+              role: user.user_metadata?.role || 'donor',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+            
+          if (createError) {
+            console.error('Error creating user record:', createError);
+            setError('Failed to create user profile');
+            return;
+          }
+          
+          data = newUser;
+        } else if (error) {
           console.error('Error fetching user data:', error);
           setError('Failed to load profile data');
           return;
@@ -180,6 +217,7 @@ export default function ProfileContent() {
                 lastName={formData.lastName}
                 size="xl"
                 className="mb-4"
+                key={refreshTimestamp}
               />
               <Button 
                 variant="outline" 

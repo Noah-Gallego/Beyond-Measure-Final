@@ -4,8 +4,8 @@ import { Suspense } from 'react';
 import SearchProjects from './SearchProjects';
 
 // This component is wrapped in Suspense to handle useSearchParams safely
-function SearchContent() {
-  return <SearchProjects />;
+function SearchContent({ variant, className, alignment }: { variant?: 'default' | 'compact', className?: string, alignment?: 'default' | 'left' }) {
+  return <SearchProjects variant={variant} className={className} alignment={alignment} />;
 }
 
 export default function SearchWrapper({ variant, className, alignment = 'default' }: { variant?: 'default' | 'compact', className?: string, alignment?: 'default' | 'left' }) {
@@ -21,7 +21,7 @@ export default function SearchWrapper({ variant, className, alignment = 'default
         </div>
       </div>
     }>
-      <SearchContent />
+      <SearchContent variant={variant} className={className} alignment={alignment} />
     </Suspense>
   );
 } 

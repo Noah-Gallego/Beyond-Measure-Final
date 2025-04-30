@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
-import { ChevronDown, User, Folder, Plus, LogOut } from "lucide-react"
+import { useState, useEffect } from "react"
+import { ChevronDown, User, Folder, Plus, LogOut, Heart } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/components/AuthProvider"
 
 interface UserDropdownProps {
   userName?: string
@@ -19,6 +20,18 @@ export function UserDropdown({
 }: UserDropdownProps) {
   const [open, setOpen] = useState(false)
   const router = useRouter()
+  const { user } = useAuth()
+  const [userRole, setUserRole] = useState<string | null>(null)
+
+  // Get the user's role when component mounts
+  useEffect(() => {
+    if (user) {
+      const role = String(user.user_metadata?.role || '').toLowerCase()
+      setUserRole(role)
+    } else {
+      setUserRole('donor') // Default to donor if no role is set
+    }
+  }, [user])
 
   const handleLogout = () => {
     if (onLogout) {
@@ -65,20 +78,39 @@ export function UserDropdown({
               <span className="text-base font-medium text-[#0E5D7F]">My Profile</span>
             </div>
 
-            <div
-              className="flex cursor-pointer items-center gap-3 px-4 py-3 hover:bg-[#3AB5E9]/5 transition-colors"
-              onClick={() => handleNavigate("/teacher/projects")}
-            >
-              <Folder className="h-5 w-5 text-[#0E5D7F]" />
-              <span className="text-base font-medium text-[#0E5D7F]">My Projects</span>
-            </div>
-
-            <div className="px-3 py-2" onClick={() => handleNavigate("/teacher/projects/create")}>
-              <div className="flex items-center gap-3 bg-[#E96951] text-white w-full px-4 py-3 rounded-md cursor-pointer hover:bg-[#E96951]/90 transition-colors">
-                <Plus className="h-5 w-5" />
-                <span className="text-base font-medium">Create a Project and Get Funded</span>
+            {userRole === 'teacher' ? (
+              <div
+                className="flex cursor-pointer items-center gap-3 px-4 py-3 hover:bg-[#3AB5E9]/5 transition-colors"
+                onClick={() => handleNavigate("/teacher/projects")}
+              >
+                <Folder className="h-5 w-5 text-[#0E5D7F]" />
+                <span className="text-base font-medium text-[#0E5D7F]">My Projects</span>
               </div>
-            </div>
+            ) : (
+              <div
+                className="flex cursor-pointer items-center gap-3 px-4 py-3 hover:bg-[#3AB5E9]/5 transition-colors"
+                onClick={() => handleNavigate("/account/wishlist")}
+              >
+                <Heart className="h-5 w-5 text-[#E96951]" />
+                <span className="text-base font-medium text-[#0E5D7F]">Wishlist</span>
+              </div>
+            )}
+
+            {userRole === 'teacher' ? (
+              <div className="px-3 py-2" onClick={() => handleNavigate("/teacher/projects/create")}>
+                <div className="flex items-center gap-3 bg-[#E96951] text-white w-full px-4 py-3 rounded-md cursor-pointer hover:bg-[#E96951]/90 transition-colors">
+                  <Plus className="h-5 w-5" />
+                  <span className="text-base font-medium">Create a Project and Get Funded</span>
+                </div>
+              </div>
+            ) : (
+              <div className="px-3 py-2" onClick={() => handleNavigate("/search")}>
+                <div className="flex items-center gap-3 bg-[#E96951] text-white w-full px-4 py-3 rounded-md cursor-pointer hover:bg-[#E96951]/90 transition-colors">
+                  <Plus className="h-5 w-5" />
+                  <span className="text-base font-medium">Find Projects to Support</span>
+                </div>
+              </div>
+            )}
 
             <div
               onClick={handleLogout}
